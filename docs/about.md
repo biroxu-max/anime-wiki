@@ -16,7 +16,7 @@
 
 ## Как добавить новое аниме
 
-1. Открой [`schedule.yaml`](https://github.com/USERNAME/anime-wiki) в корне репозитория.
+1. Открой [`schedule.yaml`](https://github.com/biroxu-max/anime-wiki) в корне репозитория.
 2. Скопируй шаблон тайтла (он там закомментирован) и заполни поля:
    `slug`, `title`, `weekday`, `start_date`, `episodes` и т.д.
 3. Закоммить изменения. При следующем запуске вики сама создаст страницу тайтла.

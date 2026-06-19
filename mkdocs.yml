@@ -1,8 +1,8 @@
 site_name: Аниме-вики
 site_description: Актуальные темы обсуждения после выхода новых серий аниме
-site_url: https://USERNAME.github.io/anime-wiki/
-repo_url: https://github.com/USERNAME/anime-wiki
-repo_name: USERNAME/anime-wiki
+site_url: https://biroxu-max.github.io/anime-wiki/
+repo_url: https://github.com/biroxu-max/anime-wiki
+repo_name: biroxu-max/anime-wiki
 
 # >>> Замени USERNAME на свой GitHub-аккаунт после создания репозитория. <<<
 
@@ -75,7 +75,7 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/USERNAME/anime-wiki
+      link: https://github.com/biroxu-max/anime-wiki
 
 # nav убран намеренно: навигация строится автоматически из структуры папок
 # (docs/anime/<slug>/index.md + ep-NN.md) вместе с navigation.indexes,
