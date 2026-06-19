@@ -6,10 +6,10 @@
 | [Kujima Utaeba Ie Hororo](anime/kujima-utaeba/index.md) | Четверг | 1 | 2026-04-09 | 12 | 11 |
 | [Koori no Jouheki](anime/koori-no-jouheki/index.md) | Четверг | 1 | 2026-04-02 | 12 | 12 |
 | [Snowball Earth](anime/snowball-earth/index.md) | Пятница | 1 | 2026-04-03 | 12 | 12 |
-| [Yomi no Tsugai](anime/yomi-no-tsugai/index.md) | Суббота | 1 | 2026-04-04 | 12 | 12 |
-| [Akane-banashi](anime/akane-banashi/index.md) | Суббота | 1 | 2026-04-04 | 12 | 12 |
-| [Kill Ao](anime/kill-ao/index.md) | Суббота | 1 | 2026-05-02 | 12 | 8 |
-| [Mao](anime/mao/index.md) | Суббота | 1 | 2026-04-04 | 12 | 12 |
+| [Yomi no Tsugai](anime/yomi-no-tsugai/index.md) | Суббота | 1 | 2026-04-04 | 12 | 11 |
+| [Akane-banashi](anime/akane-banashi/index.md) | Суббота | 1 | 2026-04-04 | 12 | 11 |
+| [Kill Ao](anime/kill-ao/index.md) | Суббота | 1 | 2026-05-02 | 12 | 7 |
+| [Mao](anime/mao/index.md) | Суббота | 1 | 2026-04-04 | 12 | 11 |
 | [Shunkashuutou Daikousha: Haru no Mai](anime/shunkashuutou-haru/index.md) | Суббота | 1 | 2026-03-29 | 14 | 12 |
 | [Kami no Niwatsuki Kusunoki-tei](anime/kami-no-niwatsuki/index.md) | Суббота | 1 | 2026-04-05 | 12 | 11 |
 | [Tsue to Tsurugi no Wistoria](anime/wistoria-s2/index.md) | Воскресенье | 2 | 2026-05-03 | 12 | 7 |
