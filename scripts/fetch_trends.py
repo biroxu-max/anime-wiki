@@ -225,7 +225,7 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, ma
         return any(k in msg for k in ("429", "resource_exhausted", "rate limit", "quota"))
 
     last_err = None
-    for attempt in range(1, 6):  # до 5 попыток
+    for attempt in range(1, 4):  # 3 попытки: прагматичный бюджет под таймаут CI
         try:
             response = client.models.generate_content(
                 model=model,
@@ -237,12 +237,12 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, ma
             break
         except Exception as e:  # noqa: BLE001
             last_err = e
-            if attempt < 5:
+            if attempt < 3:
                 if _is_rate_limited(e):
-                    wait = 60  # rate-limit: ждём минуту на восстановление квоты
-                    print(f"  ⏳ rate-limit на {anime['slug']} ep{episode}, жду {wait}с (попытка {attempt}/5)…")
+                    wait = 45  # rate-limit: ждём для восстановления квоты
+                    print(f"  ⏳ rate-limit на {anime['slug']} ep{episode}, жду {wait}с (попытка {attempt}/3)…")
                 else:
-                    wait = 2 ** attempt  # 2,4,8,16 сек для прочих ошибок
+                    wait = 2 ** attempt  # 2,4 сек для прочих ошибок
                 time.sleep(wait)
                 continue
             raise
@@ -550,6 +550,15 @@ def main() -> int:
                     continue
                 if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
                     generated.append((a, ep))
+                    # ИНКРЕМЕНТАЛЬНЫЙ КОММИТ: сохраняем прогресс сразу после каждой серии,
+                    # чтобы таймаут/краш не потерял уже сгенерированные страницы. Следующий
+                    # прогон --all-due сам подхватит недостающее (он пропускает существующие).
+                    if args.commit:
+                        update_anime_episodes_block(a)
+                        update_index(sched, generated)
+                        update_calendar(sched)
+                        update_anime_index(sched)
+                        git_commit_push(f"chore(wiki): +{a['slug']} ep{ep}")
                 # пауза между реальными запросами к Gemini, чтобы не словить rate limit
                 if not args.dry_run and inter_call_delay > 0:
                     time.sleep(inter_call_delay)
