@@ -32,11 +32,11 @@ Gemini с веб-поиском и публикует их сюда.
 ## 🆕 Последние обновления
 
 <!-- AUTO-RECENT -->
-- 🆕 **Himekishi wa Barbaroi no Yome** — [Серия 11](anime/himekishi/ep-11.md)
-- 🆕 **Kujima Utaeba Ie Hororo** — [Серия 11](anime/kujima-utaeba/ep-11.md)
-- 🆕 **Koori no Jouheki** — [Серия 12](anime/koori-no-jouheki/ep-12.md)
-- 🆕 **Hidarikiki no Eren** — [Серия 11](anime/hidarikiki-no-eren/ep-11.md)
-- 🆕 **Nigashita Sakana wa Ookikatta ga, Tsuriageta Sakana ga Ookisugita Ken** — [Серия 11](anime/nigashita-sakana/ep-11.md)
+- 🆕 **Yomi no Tsugai** — [Серия 12](anime/yomi-no-tsugai/ep-12.md)
+- 🆕 **Akane-banashi** — [Серия 12](anime/akane-banashi/ep-12.md)
+- 🆕 **Kill Ao** — [Серия 8](anime/kill-ao/ep-08.md)
+- 🆕 **Mao** — [Серия 12](anime/mao/ep-12.md)
+- 🆕 **Snowball Earth** — [Серия 12](anime/snowball-earth/ep-12.md)
 <!-- /AUTO-RECENT -->
 
 ---

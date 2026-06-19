@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 """
 fetch_trends.py — собирает актуальные темы обсуждения после выхода серии аниме
-через Google Gemini (с инструментом Google Search / grounding) и публикует их
-как Markdown-страницы для MkDocs.
+через Tavily (веб-поиск) + GLM/Z.AI (генерация) и публикует их как Markdown-страницы.
+
+Стек:
+    Tavily API  — поиск свежих обсуждений в интернете
+    GLM (Z.AI)  — генерация структурированной страницы на основе найденного контекста
+    MkDocs      — статический сайт
 
 Структура страниц:
-    docs/anime/<slug>/index.md      — страница тайтла (с расписанием и списком серий)
+    docs/anime/<slug>/index.md      — страница тайтла (из schedule.yaml)
     docs/anime/<slug>/ep-NN.md      — страница обсуждения серии N
 
 Использование:
-    # Сгенерировать страницы для всех серий, вышедших за последние дни (для cron):
-    python scripts/fetch_trends.py --all-due
-    # Принудительно обновить конкретную серию:
-    python scripts/fetch_trends.py --anime frieren --episode 14
-    # Тест без ключа Gemini (шаблонная страница):
-    python scripts/fetch_trends.py --anime frieren --episode 1 --dry-run
-    # С коммитом и пушем (для CI):
-    python scripts/fetch_trends.py --all-due --commit
+    python scripts/fetch_trends.py --all-due              # всё свежее (для cron)
+    python scripts/fetch_trends.py --anime <slug>          # последняя вышедшая серия
+    python scripts/fetch_trends.py --anime <slug> --episode N
+    python scripts/fetch_trends.py --anime <slug> --episode 1 --dry-run   # без API-ключей
+    python scripts/fetch_trends.py --all-due --commit      # для CI (auto-commit)
+    python scripts/fetch_trends.py --all-due --force       # перегенерировать даже существующие
+    python scripts/fetch_trends.py --update-only           # только агрегирующие страницы
 
 Переменные окружения:
-    GEMINI_API_KEY  — ключ из https://aistudio.google.com/apikey (нужен, кроме --dry-run)
+    GLM_API_KEY     — ключ Z.AI / ZhipuAI (https://open.bigmodel.cn)
+    TAVILY_API_KEY  — ключ Tavily (https://app.tavily.com)
 """
 
 from __future__ import annotations
@@ -112,21 +116,20 @@ def replace_block(text: str, marker: str, new_inner: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-#  Gemini + Google Search
+#  Tavily (поиск) + GLM (генерация)
 # --------------------------------------------------------------------------- #
-# Базовый промпт — общие/международные тренды. Используется всегда.
-PROMPT_BASE = """\
-Ты — редактор аниме-вики. Найди в интернете и подробно, вдохновляюще опиши, ЧТО
-ИМЕННО СЕЙЧАС активно обсуждают зрители и сообщества по свежей серии указанного
-аниме. Эта вики — источник вдохновения для читателя, поэтому пиши живо, образно,
-с деталями и настроением, но без выдумок.
+PROMPT_TEMPLATE = """\
+Ты — редактор аниме-вики. На основе найденных веб-обсуждений свежей серии аниме
+составь вдохновляющую страницу для вики на русском языке. Эта вики — источник
+вдохновения для читателя, поэтому пиши живо, образно, с деталями и настроением,
+но строго опирайся на предоставленные источники — не выдумывай факты.
 
 Аниме: {title} (яп. {title_jp}; другие названия: {aliases}).
 Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
 
-Используй веб-поиск, чтобы найти СВЕЖИЕ обсуждения (последние несколько дней):
-рецензии, посты на Reddit/форумах, видео-разборы, теории, мемы, споры. Опирайся
-на реальные публикации, не выдумывай факты.
+Ниже — свежие обсуждения из интернета (последние 2 недели):
+
+{context}
 
 Оформи ответ СТРОГО в формате Markdown на русском языке со следующими разделами:
 
@@ -153,36 +156,12 @@ PROMPT_BASE = """\
 ## 🎬 Производство и анимация
 - Заметки о качестве анимации, режиссуре, саундтреке, ключевых аниматорах (если
   обсуждают).
-"""
 
-# Расширение — локальные тренды по JP и KOR фандомам. Добавляется к базовому,
-# если в schedule.yaml стоит include_local_trends: true (по умолчанию) либо
-# у конкретного тайтла local_trends != false.
-PROMPT_LOCAL = """
-## 🇯🇵 Тренды в японском фандоме
-Проведи ОТДЕЛЬНЫЙ веб-поиск на японском языке по ключевым словам ромадзи/кандзи
-({title_jp}). Ищи свежие обсуждения (последние несколько дней) в японских
-сообществах: 5ch (旧2ちゃんねる), японский X/Twitter, Togetter,Peing, Ассоль,
-note, KAI-YOU, Аниме! Аниме!, Gigazine. Опиши, ЧТО ИМЕННО живо обсуждают японские
-зрители — от реакций до инсайдов и споров. 3–6 пунктов с пояснениями.
-
-## 🇰🇷 Тренды в корейском фандоме
-Проведи ОТДЕЛЬНЫЙ веб-поиск на корейском языке (используй название на хангыле
-или ромадзи + «애니메이션», 「리뷰」). Ищи свежие обсуждения (последние несколько
-дней) в корейских сообществах: DC Inside (디시인사이드), Arca.live, FM Korea,
-Namu wiki, корейский X/Twitter, Мани아 비평. Опиши, ЧТО ИМЕННО обсуждают корейские
-зрители — реакция, теории, мемы, локальные споры. 3–6 пунктов с пояснениями.
-"""
-
-PROMPT_FOOTER = """
 Не добавляй раздел «Источники» — я добавлю его сам из найденных ссылок.
 Пиши живо, образно, но нейтрально в оценках, без спойлеров-в-заголовках. Если по
 какому-то разделу нет информации — коротко и изящно отметь, что обсуждений по
 теме пока мало, не оставляй раздел пустым.
 """
-
-DEFAULT_PROMPT = PROMPT_BASE + PROMPT_FOOTER
-LOCAL_PROMPT = PROMPT_BASE + PROMPT_LOCAL + PROMPT_FOOTER
 
 
 @dataclass
@@ -191,79 +170,99 @@ class TrendResult:
     sources: list[dict]  # [{"uri":..., "title":...}]
 
 
-def build_prompt(anime: dict, episode: int, air_date: dt.date, *, include_local: bool) -> str:
-    tmpl = LOCAL_PROMPT if include_local else DEFAULT_PROMPT
-    return tmpl.format(
+def _tavily_search(anime: dict, episode: int) -> tuple[str, list[dict]]:
+    """Ищет свежие обсуждения серии через Tavily. Возвращает (контекст, источники)."""
+    try:
+        from tavily import TavilyClient
+    except ImportError:
+        sys.exit("Не установлен tavily-python: pip install -r scripts/requirements.txt")
+
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
+        sys.exit("Нет TAVILY_API_KEY в окружении (получить: https://app.tavily.com).")
+
+    client = TavilyClient(api_key=api_key)
+
+    # Запрос: основное название + альтернативные, номер серии, ключевые слова
+    aliases = anime.get("aliases", [])
+    title_parts = [anime["title"]] + aliases[:2]
+    query = f"{' '.join(title_parts)} episode {episode} discussion review reactions"
+
+    response = client.search(
+        query=query,
+        max_results=5,
+        days=14,  # свежесть: последние 2 недели
+        search_depth="advanced",  # глубже → больше релевантного контента
+    )
+
+    results = response.get("results", [])
+    if not results:
+        return "", []
+
+    # Контекст для GLM: заголовок + контент каждого результата
+    context_parts = []
+    sources = []
+    for i, r in enumerate(results):
+        title = r.get("title", "")
+        url = r.get("url", "")
+        content = r.get("content", "")[:800]  # ограничиваем длину каждого источника
+        context_parts.append(f"[{i+1}] {title}\n{url}\n{content}")
+        if url:
+            sources.append({"uri": url, "title": title or url})
+
+    return "\n\n".join(context_parts), sources
+
+
+def _glm_generate(prompt: str, *, model: str, max_tokens: int) -> str:
+    """Генерирует текст через GLM (Z.AI, OpenAI-совместимый API)."""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        sys.exit("Не установлен openai: pip install -r scripts/requirements.txt")
+
+    api_key = os.environ.get("GLM_API_KEY")
+    if not api_key:
+        sys.exit("Нет GLM_API_KEY в окружении (получить: https://open.bigmodel.cn).")
+
+    client = OpenAI(api_key=api_key, base_url="https://api.z.ai/api/paas/v4/")
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=0.7,
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
+def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_tokens: int) -> TrendResult:
+    """Полный цикл: Tavily поиск → GLM генерация. Требует GLM_API_KEY и TAVILY_API_KEY."""
+    # 1. Поиск свежих обсуждений через Tavily
+    context, sources = _tavily_search(anime, episode)
+
+    if not context.strip():
+        print(f"  ⚠️  Tavily не нашёл результатов для {anime['slug']} ep{episode} — пропускаю.")
+        return TrendResult(text="", sources=[])
+
+    # 2. Генерация страницы через GLM
+    prompt = PROMPT_TEMPLATE.format(
         title=anime["title"],
         title_jp=anime.get("title_jp", "—"),
         aliases=", ".join(anime.get("aliases", [])) or "—",
         season=anime.get("season", 1),
         episode=episode,
         air_date=air_date.isoformat(),
+        context=context,
     )
 
-
-def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_output_tokens: int = 1200, include_local: bool = False) -> TrendResult:
-    """Реальный запрос к Gemini с Google Search. Требует GEMINI_API_KEY."""
-    try:
-        from google import genai
-        from google.genai.types import GenerateContentConfig, GoogleSearch, Tool
-    except ImportError:
-        sys.exit("Не установлен google-genai: pip install -r scripts/requirements.txt")
-
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        sys.exit("Нет GEMINI_API_KEY в окружении (получить: https://aistudio.google.com/apikey).")
-
-    client = genai.Client(api_key=api_key)
-    search_tool = Tool(google_search=GoogleSearch())
-    prompt = build_prompt(anime, episode, air_date, include_local=include_local)
-
-    def _is_rate_limited(err: Exception) -> bool:
-        """429 / RESOURCE_EXHAUSTED — нужно длинное ожидание, не короткий retry."""
-        msg = str(err).lower()
-        return any(k in msg for k in ("429", "resource_exhausted", "rate limit", "quota"))
-
-    last_err = None
-    for attempt in range(1, 4):  # 3 попытки: прагматичный бюджет под таймаут CI
-        try:
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=GenerateContentConfig(
-                    tools=[search_tool], temperature=0.4, max_output_tokens=max_output_tokens
-                ),
-            )
-            break
-        except Exception as e:  # noqa: BLE001
-            last_err = e
-            if attempt < 3:
-                if _is_rate_limited(e):
-                    wait = 45  # rate-limit: ждём для восстановления квоты
-                    print(f"  ⏳ rate-limit на {anime['slug']} ep{episode}, жду {wait}с (попытка {attempt}/3)…")
-                else:
-                    wait = 2 ** attempt  # 2,4 сек для прочих ошибок
-                time.sleep(wait)
-                continue
-            raise
-    else:
-        raise SystemExit(f"Gemini запрос не удался: {last_err}")
-
-    text = (response.text or "").strip()
-    sources = []
-    try:
-        meta = response.candidates[0].grounding_metadata
-        for chunk in getattr(meta, "grounding_chunks", []) or []:
-            web = getattr(chunk, "web", None)
-            if web and getattr(web, "uri", None):
-                sources.append({"uri": web.uri, "title": getattr(web, "title", web.uri) or web.uri})
-    except Exception:  # noqa: BLE001
-        pass
+    text = _glm_generate(prompt, model=model, max_tokens=max_tokens)
     return TrendResult(text=text, sources=sources)
 
 
 # --------------------------------------------------------------------------- #
 #  Рендер страниц
+#  textwrap.dedent применяется к ШАБЛОНУ до .format(), иначе вставляемый
+#  многострочный {body} ломает левый отступ.
 # --------------------------------------------------------------------------- #
 _EPISODE_TMPL = textwrap.dedent("""\
     {front_matter}# {title} — Серия {episode}
@@ -308,8 +307,8 @@ def render_dryrun_page(anime: dict, episode: int, air_date: dt.date) -> str:
     placeholder = TrendResult(
         text=(
             "## 🔥 Главные темы обсуждения\n\n"
-            "- _Это шаблонная страница (dry-run без ключа Gemini)._ "
-            "После настройки `GEMINI_API_KEY` здесь появятся реальные темы обсуждения.\n\n"
+            "- _Это шаблонная страница (dry-run без API-ключей)._ "
+            "После настройки `GLM_API_KEY` и `TAVILY_API_KEY` здесь появятся реальные темы обсуждения.\n\n"
             "## 💬 Реакции зрителей\n\n"
             "- _ожидается после первого реального запуска._\n"
         ),
@@ -350,8 +349,7 @@ _ANIME_PAGE_TMPL = textwrap.dedent("""\
 
 
 def ensure_anime_page(anime: dict) -> Path:
-    """(Пере)создаёт страницу тайтла из расписания — держит её синхронной с schedule.yaml.
-    Блок AUTO-EPISODES заполняется отдельно в update_anime_episodes_block()."""
+    """(Пере)создаёт страницу тайтла из расписания — держит её синхронной с schedule.yaml."""
     path = anime_page_path(anime["slug"])
     wd = str(anime.get("weekday", "")).lower()
     wd_idx = WEEKDAYS.get(wd)
@@ -375,7 +373,6 @@ def ensure_anime_page(anime: dict) -> Path:
 
 def update_anime_episodes_block(anime: dict) -> None:
     path = ensure_anime_page(anime)
-    slug = anime["slug"]
     ep_dir = path.parent
     links = []
     if ep_dir.is_dir():
@@ -403,8 +400,7 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
         )
     text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(lines))
 
-    # «Свежие обновления» считаем с диска: последняя вышедшая серия каждого тайтла,
-    # для которой есть страница. Так блок всегда отражает реальное состояние.
+    # «Свежие обновления» считаем с диска — блок всегда отражает реальное состояние.
     recent_eps = []
     for a in sched["anime"]:
         edir = ANIME_DIR / a["slug"]
@@ -421,13 +417,13 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
             for a, ep in recent_eps
         )
     else:
-        recent = "_Пока нет обновлений. Они появятся после первого запуска генератора трендов._"
+        recent = "_Пока нет обновлений. Они появятся после первого запуска генератора._"
     text = replace_block(text, "AUTO-RECENT", recent)
     index.write_text(text, encoding="utf-8")
 
 
 def update_anime_index(sched: dict) -> None:
-    """Перегенерирует страницу «Все тайтлы» (docs/anime/index.md) из расписания."""
+    """Перегенерирует docs/anime/index.md из расписания."""
     today = dt.date.today()
     lines = []
     for a in sched["anime"]:
@@ -439,8 +435,7 @@ def update_anime_index(sched: dict) -> None:
         )
     body = (
         "# 📺 Все тайтлы\n\n"
-        "Отслеживаемые аниме и обсуждения серий. Полное расписание — на странице "
-        "[Календарь](../calendar.md).\n\n"
+        "Полное расписание — на странице [Календарь](../calendar.md).\n\n"
         + "\n".join(lines) + "\n"
     )
     ANIME_DIR.mkdir(parents=True, exist_ok=True)
@@ -472,18 +467,18 @@ def update_calendar(sched: dict) -> None:
 # --------------------------------------------------------------------------- #
 #  Главный цикл
 # --------------------------------------------------------------------------- #
-def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max_output_tokens: int = 1200, include_local: bool = False) -> bool:
+def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max_tokens: int) -> bool:
     air_date = air_date_for_episode(anime, episode)
     if dry_run:
         md = render_dryrun_page(anime, episode, air_date)
     else:
         try:
-            result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens, include_local=include_local)
-        except Exception as e:  # noqa: BLE001 — rate limit, таймаут и т.п.: пропускаем, но не роняем весь прогон
-            print(f"  ⚠️  Ошибка Gemini для {anime['slug']} ep{episode} ({type(e).__name__}) — пропускаю.")
+            result = fetch_trends(anime, episode, air_date, model=model, max_tokens=max_tokens)
+        except Exception as e:  # noqa: BLE001 — ошибка API: пропускаем, но не роняем весь прогон
+            print(f"  ⚠️  Ошибка API для {anime['slug']} ep{episode} ({type(e).__name__}: {str(e)[:120]}) — пропускаю.")
             return False
         if not result.text.strip():
-            print(f"  ⚠️  Пустой ответ Gemini для {anime['slug']} ep{episode} — пропускаю.")
+            print(f"  ⚠️  Пустой ответ GLM для {anime['slug']} ep{episode} — пропускаю.")
             return False
         md = render_episode_page(anime, episode, air_date, result)
     path = page_path(anime, episode)
@@ -499,28 +494,21 @@ def git_commit_push(message: str) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Сбор трендов обсуждений аниме через Gemini + Google Search.")
+    ap = argparse.ArgumentParser(description="Сбор трендов через Tavily + GLM.")
     ap.add_argument("--anime", help="slug конкретного тайтла")
     ap.add_argument("--episode", type=int, help="номер серии (с --anime)")
-    ap.add_argument("--all-due", action="store_true", help="обработать все свежевышедшие серии (для cron)")
-    ap.add_argument("--since-days", type=int, default=3, help="окно «свежести» в днях для --all-due (по умолч. 3)")
-    ap.add_argument("--dry-run", action="store_true", help="без запроса к Gemini (шаблонные страницы)")
-    ap.add_argument("--commit", action="store_true", help="закоммитить и запушить изменения (для CI)")
-    ap.add_argument("--force", action="store_true", help="перегенерировать даже существующие страницы (после смены промпта)")
-    ap.add_argument("--update-only", action="store_true", help="только обновить агрегирующие страницы (без запроса к Gemini)")
+    ap.add_argument("--all-due", action="store_true", help="все свежие (для cron)")
+    ap.add_argument("--since-days", type=int, default=3, help="окно «свежести» в днях (по умолч. 3)")
+    ap.add_argument("--dry-run", action="store_true", help="без API (шаблонные страницы)")
+    ap.add_argument("--commit", action="store_true", help="закоммитить и запушить (для CI)")
+    ap.add_argument("--force", action="store_true", help="перегенерировать даже существующие страницы")
+    ap.add_argument("--update-only", action="store_true", help="только агрегирующие страницы")
     args = ap.parse_args()
 
     sched = load_schedule()
-    model = sched.get("gemini_model", "gemini-2.5-flash")
-    max_output_tokens = sched.get("gemini_max_output_tokens", 1200)
-    local_default = sched.get("include_local_trends", True)
-
-    def wants_local(a: dict) -> bool:
-        # per-anime override имеет приоритет над глобальным значением
-        if "local_trends" in a:
-            return bool(a["local_trends"])
-        return local_default
-
+    model = sched.get("llm_model", "glm-4.6")
+    max_tokens = sched.get("llm_max_tokens", 2000)
+    inter_call_delay = sched.get("llm_inter_call_delay", 5)
     by_slug = {a["slug"]: a for a in sched["anime"]}
     today = dt.date.today()
 
@@ -534,10 +522,9 @@ def main() -> int:
             sys.exit(f"Неизвестный slug '{args.anime}'. Доступно: {list(by_slug)}")
         a = by_slug[args.anime]
         ep = args.episode or latest_aired_episode(a, today)
-        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
+        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_tokens=max_tokens):
             generated.append((a, ep))
     elif args.all_due:
-        inter_call_delay = sched.get("gemini_inter_call_delay", 6)  # сек между запросами (анти rate-limit)
         for a in sched["anime"]:
             latest = latest_aired_episode(a, today)
             if not latest:
@@ -548,22 +535,20 @@ def main() -> int:
                     continue
                 if page_path(a, ep).exists() and not args.dry_run and not args.force:
                     continue
-                if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
+                if process_episode(a, ep, model=model, dry_run=args.dry_run, max_tokens=max_tokens):
                     generated.append((a, ep))
-                    # ИНКРЕМЕНТАЛЬНЫЙ КОММИТ: сохраняем прогресс сразу после каждой серии,
-                    # чтобы таймаут/краш не потерял уже сгенерированные страницы. Следующий
-                    # прогон --all-due сам подхватит недостающее (он пропускает существующие).
+                    # ИНКРЕМЕНТАЛЬНЫЙ КОММИТ: сохраняем прогресс сразу после каждой серии.
                     if args.commit:
                         update_anime_episodes_block(a)
                         update_index(sched, generated)
                         update_calendar(sched)
                         update_anime_index(sched)
                         git_commit_push(f"chore(wiki): +{a['slug']} ep{ep}")
-                # пауза между реальными запросами к Gemini, чтобы не словить rate limit
+                # пауза между реальными запросами к API
                 if not args.dry_run and inter_call_delay > 0:
                     time.sleep(inter_call_delay)
     elif args.update_only:
-        pass  # только агрегирующие страницы, без обращения к Gemini
+        pass
     else:
         ap.error("Укажите --all-due, --anime [--episode] или --update-only.")
 
@@ -574,11 +559,8 @@ def main() -> int:
     update_anime_index(sched)
 
     if not generated:
-        print("ℹ️  Нет новых серий для обработки.")
+        print("ℹ️  Нет новых выпусков для обработки.")
         return 0
-
-    if args.commit:
-        git_commit_push(f"chore(wiki): автообновление трендов — {len(generated)} стр.")
 
     print(f"\nГотово. Обновлено страниц: {len(generated)}.")
     return 0
