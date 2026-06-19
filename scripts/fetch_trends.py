@@ -355,11 +355,10 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
         wd_idx = WEEKDAYS.get(wd)
         wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else ""
         lines.append(
-            f'- <a href="anime/{a["slug"]}/index.md"><b>{a["title"]}</b></a> — '
+            f'- **[{a["title"]}](anime/{a["slug"]}/index.md)** — '
             f'{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}'.rstrip()
         )
-    anime_html = "<ul>\n<li>" + "</li>\n<li>".join(lines) + "</li>\n</ul>"
-    text = replace_block(text, "AUTO-ANIME-LIST", anime_html)
+    text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(lines))
 
     # «Свежие обновления» считаем с диска: последняя вышедшая серия каждого тайтла,
     # для которой есть страница. Так блок всегда отражает реальное состояние.

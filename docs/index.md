@@ -10,9 +10,7 @@ Gemini с веб-поиском и публикует их сюда.
 ## 📺 Текущие тайтлы
 
 <!-- AUTO-ANIME-LIST -->
-<ul>
-<li>- <a href="anime/himekishi/index.md"><b>Himekishi wa Barbaroi no Yome</b></a> — Принцесса-рыцарь — невеста варвара · 1 сезон · по четвергам</li>
-</ul>
+- **[Himekishi wa Barbaroi no Yome](anime/himekishi/index.md)** — Принцесса-рыцарь — невеста варвара · 1 сезон · по четвергам
 <!-- /AUTO-ANIME-LIST -->
 
 ## 🆕 Последние обновления
