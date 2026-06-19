@@ -48,6 +48,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         # При ручном запуске honour чекбокс "force" из формы запуска.
+        # timeout: с rate-limit waits батч может занять до ~20 мин.
+        timeout-minutes: 25
         run: |
           python scripts/fetch_trends.py --all-due --commit ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 

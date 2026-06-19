@@ -219,8 +219,13 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, ma
     search_tool = Tool(google_search=GoogleSearch())
     prompt = build_prompt(anime, episode, air_date, include_local=include_local)
 
+    def _is_rate_limited(err: Exception) -> bool:
+        """429 / RESOURCE_EXHAUSTED — нужно длинное ожидание, не короткий retry."""
+        msg = str(err).lower()
+        return any(k in msg for k in ("429", "resource_exhausted", "rate limit", "quota"))
+
     last_err = None
-    for attempt in range(1, 4):
+    for attempt in range(1, 6):  # до 5 попыток
         try:
             response = client.models.generate_content(
                 model=model,
@@ -232,8 +237,13 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, ma
             break
         except Exception as e:  # noqa: BLE001
             last_err = e
-            if attempt < 3:
-                time.sleep(2 ** attempt)
+            if attempt < 5:
+                if _is_rate_limited(e):
+                    wait = 60  # rate-limit: ждём минуту на восстановление квоты
+                    print(f"  ⏳ rate-limit на {anime['slug']} ep{episode}, жду {wait}с (попытка {attempt}/5)…")
+                else:
+                    wait = 2 ** attempt  # 2,4,8,16 сек для прочих ошибок
+                time.sleep(wait)
                 continue
             raise
     else:
