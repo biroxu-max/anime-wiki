@@ -33,6 +33,7 @@ Gemini с веб-поиском и публикует их сюда.
 
 <!-- AUTO-RECENT -->
 - 🆕 **Himekishi wa Barbaroi no Yome** — [Серия 11](anime/himekishi/ep-11.md)
+- 🆕 **Snowball Earth** — [Серия 1](anime/snowball-earth/ep-01.md)
 <!-- /AUTO-RECENT -->
 
 ---

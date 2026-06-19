@@ -8,6 +8,7 @@
 timezone: "Asia/Tokyo"
 language: "ru"
 gemini_model: "gemini-2.5-flash"
+gemini_max_output_tokens: 1200   # лимит длины ответа Gemini (экономия токенов)
 
 anime:
 

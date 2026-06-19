@@ -172,7 +172,7 @@ def build_prompt(anime: dict, episode: int, air_date: dt.date) -> str:
     )
 
 
-def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str) -> TrendResult:
+def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_output_tokens: int = 1200) -> TrendResult:
     """Реальный запрос к Gemini с Google Search. Требует GEMINI_API_KEY."""
     try:
         from google import genai
@@ -194,7 +194,9 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str) ->
             response = client.models.generate_content(
                 model=model,
                 contents=prompt,
-                config=GenerateContentConfig(tools=[search_tool], temperature=0.4),
+                config=GenerateContentConfig(
+                    tools=[search_tool], temperature=0.4, max_output_tokens=max_output_tokens
+                ),
             )
             break
         except Exception as e:  # noqa: BLE001
@@ -429,12 +431,12 @@ def update_calendar(sched: dict) -> None:
 # --------------------------------------------------------------------------- #
 #  Главный цикл
 # --------------------------------------------------------------------------- #
-def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool) -> bool:
+def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max_output_tokens: int = 1200) -> bool:
     air_date = air_date_for_episode(anime, episode)
     if dry_run:
         md = render_dryrun_page(anime, episode, air_date)
     else:
-        result = fetch_trends(anime, episode, air_date, model=model)
+        result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens)
         if not result.text.strip():
             print(f"  ⚠️  Пустой ответ Gemini для {anime['slug']} ep{episode} — пропускаю.")
             return False
@@ -464,6 +466,7 @@ def main() -> int:
 
     sched = load_schedule()
     model = sched.get("gemini_model", "gemini-2.5-flash")
+    max_output_tokens = sched.get("gemini_max_output_tokens", 1200)
     by_slug = {a["slug"]: a for a in sched["anime"]}
     today = dt.date.today()
 
@@ -477,7 +480,7 @@ def main() -> int:
             sys.exit(f"Неизвестный slug '{args.anime}'. Доступно: {list(by_slug)}")
         a = by_slug[args.anime]
         ep = args.episode or latest_aired_episode(a, today)
-        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run):
+        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens):
             generated.append((a, ep))
     elif args.all_due:
         for a in sched["anime"]:
@@ -490,7 +493,7 @@ def main() -> int:
                     continue
                 if page_path(a, ep).exists() and not args.dry_run:
                     continue
-                if process_episode(a, ep, model=model, dry_run=args.dry_run):
+                if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens):
                     generated.append((a, ep))
     elif args.update_only:
         pass  # только агрегирующие страницы, без обращения к Gemini
