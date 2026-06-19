@@ -1,0 +1,67 @@
+name: Update & Deploy
+
+on:
+  schedule:
+    # Ежедневно в 06:00 UTC (≈15:00 по Токио) — даёт обсуждениям время «настояться»
+    # после ночного эфира. Скрипт сам решает, какие серии «должны», по schedule.yaml.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    # Ручной запуск со вкладки Actions (например, для принудительного обновления)
+  push:
+    branches: [main]
+
+permissions:
+  contents: write   # для коммита новых страниц скриптом
+
+# Не складывать деплои в очередь
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Configure git for auto-commits
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch trending discussion topics
+        # Только по расписанию и ручному запуску. На обычный push — не запускаем,
+        # просто пересобираем то, что уже в репозитории.
+        if: github.event_name != 'push'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/fetch_trends.py --all-due --commit
+
+      - name: Build site (strict)
+        run: mkdocs build --strict
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

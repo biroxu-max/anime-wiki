@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# MkDocs
+site/
+
+# OS / редакторы
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Локальные секреты — НИКОГДА не коммить ключ
+*.local
+secrets.local
