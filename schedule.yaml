@@ -9,6 +9,7 @@ timezone: "Asia/Tokyo"
 language: "ru"
 gemini_model: "gemini-2.5-flash"
 gemini_max_output_tokens: 4000   # щедрый лимит — вика для вдохновения, с секциями JP/KOR
+gemini_inter_call_delay: 6       # пауза (сек) между запросами — анти rate-limit при批量 генерации
 include_local_trends: true        # собирать тренды японского и корейского фандомов
 # Отключить для конкретного тайтла: добавь в его запись `local_trends: false`
 

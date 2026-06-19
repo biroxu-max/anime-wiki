@@ -467,7 +467,11 @@ def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max
     if dry_run:
         md = render_dryrun_page(anime, episode, air_date)
     else:
-        result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens, include_local=include_local)
+        try:
+            result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens, include_local=include_local)
+        except Exception as e:  # noqa: BLE001 — rate limit, таймаут и т.п.: пропускаем, но не роняем весь прогон
+            print(f"  ⚠️  Ошибка Gemini для {anime['slug']} ep{episode} ({type(e).__name__}) — пропускаю.")
+            return False
         if not result.text.strip():
             print(f"  ⚠️  Пустой ответ Gemini для {anime['slug']} ep{episode} — пропускаю.")
             return False
@@ -523,6 +527,7 @@ def main() -> int:
         if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
             generated.append((a, ep))
     elif args.all_due:
+        inter_call_delay = sched.get("gemini_inter_call_delay", 6)  # сек между запросами (анти rate-limit)
         for a in sched["anime"]:
             latest = latest_aired_episode(a, today)
             if not latest:
@@ -535,6 +540,9 @@ def main() -> int:
                     continue
                 if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
                     generated.append((a, ep))
+                # пауза между реальными запросами к Gemini, чтобы не словить rate limit
+                if not args.dry_run and inter_call_delay > 0:
+                    time.sleep(inter_call_delay)
     elif args.update_only:
         pass  # только агрегирующие страницы, без обращения к Gemini
     else:
