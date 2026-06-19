@@ -11,7 +11,7 @@ Gemini с веб-поиском и публикует их сюда.
 
 <!-- AUTO-ANIME-LIST -->
 <ul>
-<li>- <a href="anime/frieren/index.md"><b>Frieren: Beyond Journey's End</b></a> — Провожающая в последний путь Фрирен · 2 сезон · по пятницам</li>
+<li>- <a href="anime/himekishi/index.md"><b>Himekishi wa Barbaroi no Yome</b></a> — Принцесса-рыцарь — невеста варвара · 1 сезон · по четвергам</li>
 </ul>
 <!-- /AUTO-ANIME-LIST -->
 

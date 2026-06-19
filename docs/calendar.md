@@ -2,4 +2,4 @@
 
 | Аниме | День | Сезон | Премьера | Серий | Последняя вышедшая |
 |---|---|---|---|---|---|
-| [Frieren: Beyond Journey's End](anime/frieren/index.md) | Пятница | 2 | 2026-01-09 | 24 | 24 |
+| [Himekishi wa Barbaroi no Yome](anime/himekishi/index.md) | Четверг | 1 | 2026-04-09 | 12 | 11 |
