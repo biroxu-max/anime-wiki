@@ -6,7 +6,12 @@ on:
     # после ночного эфира. Скрипт сам решает, какие серии «должны», по schedule.yaml.
     - cron: "0 6 * * *"
   workflow_dispatch:
-    # Ручной запуск со вкладки Actions (например, для принудительного обновления)
+    # Ручной запуск со вкладки Actions. Поля ниже появятся в форме запуска.
+    inputs:
+      force:
+        description: "Перегенерировать даже существующие страницы (после смены промпта)"
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -42,7 +47,9 @@ jobs:
         if: github.event_name != 'push'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/fetch_trends.py --all-due --commit
+        # При ручном запуске honour чекбокс "force" из формы запуска.
+        run: |
+          python scripts/fetch_trends.py --all-due --commit ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Build site (strict)
         run: mkdocs build --strict

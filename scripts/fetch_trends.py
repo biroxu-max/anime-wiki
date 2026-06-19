@@ -492,6 +492,7 @@ def main() -> int:
     ap.add_argument("--since-days", type=int, default=3, help="окно «свежести» в днях для --all-due (по умолч. 3)")
     ap.add_argument("--dry-run", action="store_true", help="без запроса к Gemini (шаблонные страницы)")
     ap.add_argument("--commit", action="store_true", help="закоммитить и запушить изменения (для CI)")
+    ap.add_argument("--force", action="store_true", help="перегенерировать даже существующие страницы (после смены промпта)")
     ap.add_argument("--update-only", action="store_true", help="только обновить агрегирующие страницы (без запроса к Gemini)")
     args = ap.parse_args()
 
@@ -530,7 +531,7 @@ def main() -> int:
                 air = air_date_for_episode(a, ep)
                 if (today - air).days > args.since_days:
                     continue
-                if page_path(a, ep).exists() and not args.dry_run:
+                if page_path(a, ep).exists() and not args.dry_run and not args.force:
                     continue
                 if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
                     generated.append((a, ep))
