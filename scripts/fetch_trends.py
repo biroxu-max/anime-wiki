@@ -114,9 +114,12 @@ def replace_block(text: str, marker: str, new_inner: str) -> str:
 # --------------------------------------------------------------------------- #
 #  Gemini + Google Search
 # --------------------------------------------------------------------------- #
-PROMPT_TEMPLATE = """\
-Ты — редактор аниме-вики. Найди в интернете и кратко, ёмко опиши, ЧТО ИМЕННО СЕЙЧАС
-активно обсуждают зрители и сообщества по свежей серии указанного аниме.
+# Базовый промпт — общие/международные тренды. Используется всегда.
+PROMPT_BASE = """\
+Ты — редактор аниме-вики. Найди в интернете и подробно, вдохновляюще опиши, ЧТО
+ИМЕННО СЕЙЧАС активно обсуждают зрители и сообщества по свежей серии указанного
+аниме. Эта вики — источник вдохновения для читателя, поэтому пиши живо, образно,
+с деталями и настроением, но без выдумок.
 
 Аниме: {title} (яп. {title_jp}; другие названия: {aliases}).
 Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
@@ -128,31 +131,58 @@ PROMPT_TEMPLATE = """\
 Оформи ответ СТРОГО в формате Markdown на русском языке со следующими разделами:
 
 ## 🔥 Главные темы обсуждения
-- 3–6 ключевых тем, которые больше всего обсуждают (по одному пункту на тему,
-  с короткой поясняющей фразой).
+- 4–7 ключевых тем, которые больше всего обсуждают (по одному пункту на тему,
+  с ёмкой поясняющей фразой, передающей суть дискуссии).
 
 ## 💬 Реакции зрителей
-- Что вызвало самую бурную реакцию (восторг, шок, слёзы и т.п.).
+- Что вызвало самую бурную реакцию (восторг, шок, слёзы и т.п.). Опиши накал
+  эмоций ярко и конкретно.
 
 ## 🧩 Теории и догадки
-- Популярные теории и предположения о сюжете/персонажах.
+- Популярные теории и предположения о сюжете/персонажах, даже самые смелые.
 
 ## 🎭 Запомнившиеся моменты
-- Яркие сцены, цитаты, повороты сюжета.
+- Яркие сцены, цитаты, повороты сюжета — то, что заставляет пересматривать.
 
 ## 😂 Мемы и шутки
-- Мемы, родившиеся вокруг этой серии (если есть).
+- Мемы, родившиеся вокруг этой серии, с пояснением контекста шутки (если есть).
 
 ## ⚡ Спорные моменты
-- Разногласия в сообществе, критика (если есть).
+- Разногласия в сообществе, критика, защищаемые и оспариваемые мнения (если есть).
 
 ## 🎬 Производство и анимация
-- Заметки о качестве анимации, режиссуре, саундтреке (если обсуждают).
-
-Не добавляй раздел «Источники» — я добавлю его сам из найденных ссылок.
-Пиши живо, но нейтрально, без спойлеров-в-заголовках. Если по какому-то разделу
-нет информации — напиши одну короткую фразу, что обсуждений по теме пока мало.
+- Заметки о качестве анимации, режиссуре, саундтреке, ключевых аниматорах (если
+  обсуждают).
 """
+
+# Расширение — локальные тренды по JP и KOR фандомам. Добавляется к базовому,
+# если в schedule.yaml стоит include_local_trends: true (по умолчанию) либо
+# у конкретного тайтла local_trends != false.
+PROMPT_LOCAL = """
+## 🇯🇵 Тренды в японском фандоме
+Проведи ОТДЕЛЬНЫЙ веб-поиск на японском языке по ключевым словам ромадзи/кандзи
+({title_jp}). Ищи свежие обсуждения (последние несколько дней) в японских
+сообществах: 5ch (旧2ちゃんねる), японский X/Twitter, Togetter,Peing, Ассоль,
+note, KAI-YOU, Аниме! Аниме!, Gigazine. Опиши, ЧТО ИМЕННО живо обсуждают японские
+зрители — от реакций до инсайдов и споров. 3–6 пунктов с пояснениями.
+
+## 🇰🇷 Тренды в корейском фандоме
+Проведи ОТДЕЛЬНЫЙ веб-поиск на корейском языке (используй название на хангыле
+или ромадзи + «애니메이션», 「리뷰」). Ищи свежие обсуждения (последние несколько
+дней) в корейских сообществах: DC Inside (디시인사이드), Arca.live, FM Korea,
+Namu wiki, корейский X/Twitter, Мани아 비평. Опиши, ЧТО ИМЕННО обсуждают корейские
+зрители — реакция, теории, мемы, локальные споры. 3–6 пунктов с пояснениями.
+"""
+
+PROMPT_FOOTER = """
+Не добавляй раздел «Источники» — я добавлю его сам из найденных ссылок.
+Пиши живо, образно, но нейтрально в оценках, без спойлеров-в-заголовках. Если по
+какому-то разделу нет информации — коротко и изящно отметь, что обсуждений по
+теме пока мало, не оставляй раздел пустым.
+"""
+
+DEFAULT_PROMPT = PROMPT_BASE + PROMPT_FOOTER
+LOCAL_PROMPT = PROMPT_BASE + PROMPT_LOCAL + PROMPT_FOOTER
 
 
 @dataclass
@@ -161,8 +191,9 @@ class TrendResult:
     sources: list[dict]  # [{"uri":..., "title":...}]
 
 
-def build_prompt(anime: dict, episode: int, air_date: dt.date) -> str:
-    return PROMPT_TEMPLATE.format(
+def build_prompt(anime: dict, episode: int, air_date: dt.date, *, include_local: bool) -> str:
+    tmpl = LOCAL_PROMPT if include_local else DEFAULT_PROMPT
+    return tmpl.format(
         title=anime["title"],
         title_jp=anime.get("title_jp", "—"),
         aliases=", ".join(anime.get("aliases", [])) or "—",
@@ -172,7 +203,7 @@ def build_prompt(anime: dict, episode: int, air_date: dt.date) -> str:
     )
 
 
-def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_output_tokens: int = 1200) -> TrendResult:
+def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_output_tokens: int = 1200, include_local: bool = False) -> TrendResult:
     """Реальный запрос к Gemini с Google Search. Требует GEMINI_API_KEY."""
     try:
         from google import genai
@@ -186,7 +217,7 @@ def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, ma
 
     client = genai.Client(api_key=api_key)
     search_tool = Tool(google_search=GoogleSearch())
-    prompt = build_prompt(anime, episode, air_date)
+    prompt = build_prompt(anime, episode, air_date, include_local=include_local)
 
     last_err = None
     for attempt in range(1, 4):
@@ -431,12 +462,12 @@ def update_calendar(sched: dict) -> None:
 # --------------------------------------------------------------------------- #
 #  Главный цикл
 # --------------------------------------------------------------------------- #
-def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max_output_tokens: int = 1200) -> bool:
+def process_episode(anime: dict, episode: int, *, model: str, dry_run: bool, max_output_tokens: int = 1200, include_local: bool = False) -> bool:
     air_date = air_date_for_episode(anime, episode)
     if dry_run:
         md = render_dryrun_page(anime, episode, air_date)
     else:
-        result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens)
+        result = fetch_trends(anime, episode, air_date, model=model, max_output_tokens=max_output_tokens, include_local=include_local)
         if not result.text.strip():
             print(f"  ⚠️  Пустой ответ Gemini для {anime['slug']} ep{episode} — пропускаю.")
             return False
@@ -467,6 +498,14 @@ def main() -> int:
     sched = load_schedule()
     model = sched.get("gemini_model", "gemini-2.5-flash")
     max_output_tokens = sched.get("gemini_max_output_tokens", 1200)
+    local_default = sched.get("include_local_trends", True)
+
+    def wants_local(a: dict) -> bool:
+        # per-anime override имеет приоритет над глобальным значением
+        if "local_trends" in a:
+            return bool(a["local_trends"])
+        return local_default
+
     by_slug = {a["slug"]: a for a in sched["anime"]}
     today = dt.date.today()
 
@@ -480,7 +519,7 @@ def main() -> int:
             sys.exit(f"Неизвестный slug '{args.anime}'. Доступно: {list(by_slug)}")
         a = by_slug[args.anime]
         ep = args.episode or latest_aired_episode(a, today)
-        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens):
+        if ep and process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
             generated.append((a, ep))
     elif args.all_due:
         for a in sched["anime"]:
@@ -493,7 +532,7 @@ def main() -> int:
                     continue
                 if page_path(a, ep).exists() and not args.dry_run:
                     continue
-                if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens):
+                if process_episode(a, ep, model=model, dry_run=args.dry_run, max_output_tokens=max_output_tokens, include_local=wants_local(a)):
                     generated.append((a, ep))
     elif args.update_only:
         pass  # только агрегирующие страницы, без обращения к Gemini
