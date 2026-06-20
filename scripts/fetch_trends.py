@@ -135,7 +135,9 @@ PROMPT_TEMPLATE = """\
 Аниме: {title} (яп. {title_jp}; другие названия: {aliases}).
 Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
 
-Ниже — свежие обсуждения из интернета, появившиеся после выхода этой серии:
+Ниже — свежие обсуждения из интернета, появившиеся после выхода этой серии.
+Источники могут быть на английском, японском (5ch) или корейском (Naver) —
+обобщай их на русском, учитывая нюансы разных фандомов:
 
 {context}
 
@@ -179,23 +181,88 @@ class TrendResult:
 
 
 def _episode_matches(text: str, episode: int) -> bool:
-    """Проверяет, упоминает ли URL/заголовок конкретно этот номер серии
-    (episode_12, episode-12, ep.12, 'episode 12'). Не ловит 'episode 2' при N=12."""
-    # Ищем "episode" + граница + ровно номер N (не N как часть другого числа)
+    """Проверяет, упоминает ли URL/заголовок конкретно этот номер серии.
+    Мультиязычно: EN (episode 12), JP (第12話), KR (12화). Не ловит 'episode 2' при N=12."""
     patterns = [
-        rf"episode[\s_-]{episode}\b",
+        rf"episode[\s_-]{episode}\b",       # EN: episode 12 / episode_12 / ep-12
         rf"\bep[\s_.-]{episode}\b",
         rf"#\s*{episode}\b",
+        rf"第{episode}話",                   # JP: 第12話
+        rf"{episode}話",
+        rf"제\s*{episode}\s*화",             # KR: 제12화
+        rf"\b{episode}화\b",
     ]
     return any(re.search(p, text, re.IGNORECASE) for p in patterns)
 
 
-def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, list[dict]]:
-    """Ищет свежие обсуждения КОНКРЕТНОЙ серии через Tavily. Возвращает (контекст, источники).
+# Домены с реальными обсуждениями, сгруппированные по языку/региону.
+_EN_FORUM_DOMAINS = ["reddit.com", "myanimelist.net", "anilist.co", "youtube.com"]
+_FOREIGN_DOMAINS = ["5ch.net", "cafe.naver.com", "blog.naver.com"]
 
-    Ключевое: фильтруем по дате эфира (start_date) и доменам-форумам, затем
-    постфильтруем результаты, оставляя те, где URL/заголовок упоминают именно
-    этот номер серии. Это решает баг «общие обзоры / обсуждения 1-й серии».
+
+def _is_foreign(url: str) -> bool:
+    return any(d in url for d in _FOREIGN_DOMAINS)
+
+
+def _result_mentions_title(text: str, anime: dict) -> bool:
+    """Проверяет, что результат действительно про это аниме (не созвучное название).
+    Решает баг «Kill la Kill» вместо «Kill Ao». Учитывает англ./яп./рус. названия —
+    критично для JP (5ch) результатов, где текст на кандзи/катакане."""
+    candidates = [anime["title"]] + anime.get("aliases", []) + [
+        anime.get("title_jp", ""), anime.get("title_ru", ""),
+    ]
+    text_lower = text.lower()
+    # Нормализованная версия для сравнения (без интерпункта, пробелов, _ и -)
+    text_norm = re.sub(r"[・\s_-]", "", text_lower)
+    for c in candidates:
+        if not c:
+            continue
+        c_clean = c.strip()
+        has_cjk = bool(re.search(r"[^\x00-\x7F]", c_clean))  # non-ASCII → JP/KR
+        if has_cjk:
+            # CJK: нормализуем (убираем ・ и пробелы) — «キル・アオ» матчит «キルアオ»
+            c_norm = re.sub(r"[・\s]", "", c_clean.lower())
+            if len(c_norm) >= 2 and c_norm in text_norm:
+                return True
+        else:
+            # Латиница: нормализуем candidate (без пробелов) и ищем в нормализованном text
+            # «Kill Ao» → «killao» матчит «kill ao»/«killao»/«Kill_Ao»
+            c_lat = re.sub(r"[\s_-]", "", c_clean.lower())
+            if len(c_lat) >= 4 and c_lat in text_norm:
+                return True
+    return False
+
+
+def _do_one_search(client, query: str, episode: int, air_date: dt.date, domains: list[str], anime: dict) -> list[dict]:
+    """Один запрос к Tavily с постфильтром: эпизод-специфичность + название аниме."""
+    try:
+        response = client.search(
+            query=query,
+            max_results=6,
+            search_depth="advanced",
+            start_date=air_date.isoformat(),
+            include_domains=domains,
+        )
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for r in response.get("results", []):
+        haystack = (r.get("url", "") + " " + r.get("title", ""))
+        if not _result_mentions_title(haystack, anime):
+            continue  # Kill la Kill вместо Kill Ao и пр. — отбрасываем
+        if _episode_matches(haystack, episode):
+            r["_spec"] = True
+        out.append(r)
+    return out
+
+
+def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, list[dict]]:
+    """Мультпоиск обсуждений КОНКРЕТНОЙ серии: англоязычные форумы + японский 5ch + корейский Naver.
+
+    Каждый регион ищется отдельным запросом на релевантном языке (это критично —
+    английский запрос не находит JP/KR-треды). Результаты постфильтруются по номеру
+    серии и названию аниме, затем диверсифицируются по регионам для «золотых» JP/KR
+    источников.
     """
     try:
         from tavily import TavilyClient
@@ -208,33 +275,39 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
 
     client = TavilyClient(api_key=api_key)
 
+    title_jp = anime.get("title_jp", "")
     aliases = anime.get("aliases", [])
-    title_parts = [anime["title"]] + aliases[:2]
-    query = f"{' '.join(title_parts)} episode {episode} discussion"
 
-    # Домены с реальными обсуждениями (а не SEO-обзорами): Reddit, MAL, Anilist, YouTube
-    discussion_domains = ["reddit.com", "myanimelist.net", "anilist.co", "youtube.com"]
+    # 1) Англоязычные форумы (Reddit/MAL/Anilist/YouTube)
+    en_query = f"{' '.join([anime['title']] + aliases[:2])} episode {episode} discussion"
+    en_results = _do_one_search(client, en_query, episode, air_date, _EN_FORUM_DOMAINS, anime)
 
-    response = client.search(
-        query=query,
-        max_results=8,
-        search_depth="advanced",
-        start_date=air_date.isoformat(),  # только с даты эфира этой серии!
-        include_domains=discussion_domains,
-    )
-    results = response.get("results", [])
+    # 2) Японский 5ch — запрос на японском (ромадзи/кандзи плохо ищутся на англ)
+    jp_results = []
+    if title_jp:
+        jp_query = f"{title_jp} {episode}話"  # «第12話»-стиль
+        jp_results = _do_one_search(client, jp_query, episode, air_date, ["5ch.net"], anime)
 
-    # Постфильтр: приоритет результатам, где URL/заголовок явно про этот эпизод
-    specific, general = [], []
-    for r in results:
-        haystack = (r.get("url", "") + " " + r.get("title", ""))
-        (specific if _episode_matches(haystack, episode) else general).append(r)
+    # 3) Корейский Naver — корейские фаны знают англ./яп. названия
+    kr_query_parts = [anime["title"]] + ([title_jp] if title_jp else [])
+    kr_query = f"{' '.join(kr_query_parts)} {episode}화 리뷰"
+    kr_results = _do_one_search(client, kr_query, episode, air_date, ["cafe.naver.com", "blog.naver.com"], anime)
 
-    # Берём сначала эпизод-специфичные, добиваем общими до 5
-    picked = specific[:5]
-    if len(picked) < 3:
-        picked.extend(general[: 3 - len(picked)])
-    picked = picked[:5]
+    # Диверсификация: до 3 EN (приоритет эпизод-специфичным) + до 2 JP/KR («золото»)
+    en_spec = [r for r in en_results if r.get("_spec")]
+    en_gen = [r for r in en_results if not r.get("_spec")]
+    picked = (en_spec + en_gen)[:3]
+    foreign = jp_results + kr_results
+    picked += foreign[:2]
+    # добиваем до 6
+    seen = {r.get("url") for r in picked}
+    for r in en_gen + en_spec:
+        if len(picked) >= 6:
+            break
+        if r.get("url") not in seen:
+            picked.append(r)
+            seen.add(r.get("url"))
+    picked = picked[:6]
 
     if not picked:
         return "", []
@@ -245,7 +318,9 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
         title = r.get("title", "")
         url = r.get("url", "")
         content = r.get("content", "")[:800]
-        context_parts.append(f"[{i+1}] {title}\n{url}\n{content}")
+        region = "🇯🇵" if "5ch.net" in url else ("🇰🇷" if "naver.com" in url else "")
+        prefix = f"{region} " if region else ""
+        context_parts.append(f"{prefix}[{i+1}] {title}\n{url}\n{content}")
         if url:
             sources.append({"uri": url, "title": title or url})
 

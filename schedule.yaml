@@ -9,7 +9,7 @@ timezone: "Asia/Tokyo"
 language: "ru"
 llm_model: "glm-5-turbo"        # модель GLM (Z.AI) — верифицировано
 llm_max_tokens: 2000             # лимит длины ответа GLM
-llm_inter_call_delay: 5          # пауза (сек) между запросами при батч-генерации
+llm_inter_call_delay: 8          # пауза (сек) между сериями при батч-генерации (3 поиска Tavily + 1 GLM на серию)
 
 anime:
 
@@ -104,11 +104,11 @@ anime:
     title: "Kill Ao"
     title_ru: "Убивая юность"
     title_jp: "キル・アオ"
-    aliases: ["Kill Ao"]
+    aliases: ["Kill Ao", "Kill Blue"]
     season: 1
     weekday: "Saturday"
     time: "25:00"
-    start_date: "2026-05-02"
+    start_date: "2026-04-11"
     episodes: 12
     tags: ["экшен", "драма", "школа"]
     synopsis: >
