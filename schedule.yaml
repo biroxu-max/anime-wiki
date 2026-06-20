@@ -9,7 +9,7 @@ timezone: "Asia/Tokyo"
 language: "ru"
 llm_model: "glm-5-turbo"        # модель GLM (Z.AI) — верифицировано
 llm_max_tokens: 2000             # лимит длины ответа GLM
-llm_inter_call_delay: 8          # пауза (сек) между сериями при батч-генерации (3 поиска Tavily + 1 GLM на серию)
+llm_inter_call_delay: 2          # пауза (сек) между сериями; GLM не имеет жёсткого rate-limit, 2с — страховка для Tavily
 
 anime:
 

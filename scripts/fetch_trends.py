@@ -197,6 +197,12 @@ def _episode_matches(text: str, episode: int) -> bool:
 
 # Домены с реальными обсуждениями, сгруппированные по языку/региону.
 _EN_FORUM_DOMAINS = ["reddit.com", "myanimelist.net", "anilist.co", "youtube.com"]
+# Обзорные сайты с развёрнутыми рецензиями серий (дают богатый контекст для GLM).
+# Постфильтр (_episode_matches + start_date) гарантирует, что берётся именно свежая серия.
+_REVIEW_DOMAINS = [
+    "animenewsnetwork.com", "thereviewgeek.com", "animecorner.me",
+    "butwhytho.net", "comicbook.com", "cinemasentries.com",
+]
 _FOREIGN_DOMAINS = ["5ch.net"]
 
 
@@ -238,7 +244,7 @@ def _do_one_search(client, query: str, episode: int, air_date: dt.date, domains:
     try:
         response = client.search(
             query=query,
-            max_results=6,
+            max_results=8,
             search_depth="advanced",
             start_date=air_date.isoformat(),
             include_domains=domains,
@@ -281,26 +287,40 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
     en_query = f"{' '.join([anime['title']] + aliases[:2])} episode {episode} discussion"
     en_results = _do_one_search(client, en_query, episode, air_date, _EN_FORUM_DOMAINS, anime)
 
-    # 2) Японский 5ch — запрос на японском (ромадзи/кандзи плохо ищутся на англ)
+    # 2) Обзорные сайты (ANN/Review Geek/etc) — развёрнутые рецензии дают богатый контекст.
+    #    Отдельный запрос со словом "review" → Tavily ранжирует релевантные рецензии выше.
+    rev_results: list[dict] = []
+    if _REVIEW_DOMAINS:
+        rev_query = f"{' '.join([anime['title']] + aliases[:2])} episode {episode} review analysis"
+        rev_results = _do_one_search(client, rev_query, episode, air_date, _REVIEW_DOMAINS, anime)
+
+    # 3) Японский 5ch — запрос на японском (ромадзи/кандзи плохо ищутся на англ)
     jp_results = []
     if title_jp:
         jp_query = f"{title_jp} {episode}話"  # «第12話»-стиль
         jp_results = _do_one_search(client, jp_query, episode, air_date, ["5ch.net"], anime)
 
-    # Диверсификация: до 3 EN (приоритет эпизод-специфичным) + до 2 JP 5ch («золото»)
-    en_spec = [r for r in en_results if r.get("_spec")]
-    en_gen = [r for r in en_results if not r.get("_spec")]
-    picked = (en_spec + en_gen)[:3]
-    picked += jp_results[:2]
-    # добиваем до 6
+    # Диверсификация: приоритет эпизод-специфичным (с номером серии), затем JP 5ch.
+    # Объединяем форумы + обзоры; специфичные (review "Episode 11 Recap") идут первыми.
+    en_all = en_results + rev_results
+    en_spec = [r for r in en_all if r.get("_spec")]
+    en_gen = [r for r in en_all if not r.get("_spec")]
+    # дедуп по URL
+    _seen = set()
+    en_spec = [r for r in en_spec if not (r.get("url") in _seen or _seen.add(r.get("url")))]
+    en_gen = [r for r in en_gen if not (r.get("url") in _seen or _seen.add(r.get("url")))]
+
+    picked = en_spec[:5]  # специфичные (с номером серии) — основа страницы
+    picked += jp_results[:2]  # JP 5ch («золото»)
+    # добиваем общими до 8
     seen = {r.get("url") for r in picked}
-    for r in en_gen + en_spec:
-        if len(picked) >= 6:
+    for r in en_gen:
+        if len(picked) >= 8:
             break
         if r.get("url") not in seen:
             picked.append(r)
             seen.add(r.get("url"))
-    picked = picked[:6]
+    picked = picked[:8]
 
     if not picked:
         return "", []
