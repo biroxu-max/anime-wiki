@@ -476,6 +476,8 @@ def render_dryrun_page(anime: dict, episode: int, air_date: dt.date) -> str:
 _ANIME_PAGE_TMPL = textwrap.dedent("""\
     {front_matter}# {title}
 
+    <img src="{cover}" alt="{title}" style="float: right; width: 200px; border-radius: 8px; margin: 0 0 16px 16px; max-width: 40vw;" />
+
     **{title_ru}** · {title_jp}
 
     !!! abstract "О чём"
@@ -494,6 +496,15 @@ _ANIME_PAGE_TMPL = textwrap.dedent("""\
     | Премьера сезона | {start} |
     | Ожидаемо серий | {episodes} |
 
+    <div style="margin: 12px 0;">
+    <strong>📈 Прогресс сезона:</strong>
+    <div style="background: var(--md-default-fg-color--lightest); border-radius: 6px; overflow: hidden; height: 28px; margin-top: 6px;">
+      <div style="background: linear-gradient(90deg, var(--md-primary-fg-color), var(--md-accent-fg-color)); height: 100%; width: {progress_pct}%; display: flex; align-items: center; justify-content: center; min-width: 60px; transition: width 0.5s ease;">
+        <span style="color: white; font-size: 0.85em; font-weight: 600; white-space: nowrap;">{progress_label}</span>
+      </div>
+    </div>
+    </div>
+
     ---
 
     ## 📖 Серии и обсуждения
@@ -510,17 +521,28 @@ def ensure_anime_page(anime: dict) -> Path:
     wd = str(anime.get("weekday", "")).lower()
     wd_idx = WEEKDAYS.get(wd)
     wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else str(anime.get("weekday", "—"))
+
+    # Прогресс-бар сезона
+    today = dt.date.today()
+    aired = latest_aired_episode(anime, today)
+    total_eps = int(anime.get("episodes", aired or 12))
+    progress_pct = min(100, int(aired / total_eps * 100)) if total_eps > 0 else 0
+    progress_label = f"{aired}/{total_eps} серий" if aired else f"0/{total_eps} — премьера скоро"
+
     content = _ANIME_PAGE_TMPL.format(
         front_matter=_front_matter(anime, nav_title=anime.get("title_ru") or anime["title"]),
         title=anime["title"],
         title_ru=anime.get("title_ru", ""),
         title_jp=anime.get("title_jp", ""),
+        cover=anime.get("cover", ""),
         synopsis=(anime.get("synopsis") or "—").strip(),
         tags=_tags_plain(anime),
         season=anime.get("season", "—"),
         weekday=wd_ru,
         start=anime.get("start_date", "—"),
         episodes=anime.get("episodes", "—"),
+        progress_pct=progress_pct,
+        progress_label=progress_label,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -545,16 +567,21 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
     index = DOCS / "index.md"
     text = index.read_text(encoding="utf-8") if index.exists() else ""
 
-    lines = []
+    cards = []
     for a in sched["anime"]:
         wd = str(a.get("weekday", "")).lower()
         wd_idx = WEEKDAYS.get(wd)
         wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else ""
-        lines.append(
-            f'- **[{a["title"]}](anime/{a["slug"]}/index.md)** — '
-            f'{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}'.rstrip()
+        cover = a.get("cover", "")
+        cover_html = f'<img src="{cover}" style="width: 48px; height: 68px; border-radius: 4px; object-fit: cover;" />' if cover else ""
+        cards.append(
+            f'<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">'
+            f'{cover_html}'
+            f'<div><strong><a href="anime/{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
+            f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}</span></div>'
+            f'</div>'
         )
-    text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(lines))
+    text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(cards))
 
     # «Свежие обновления» считаем с диска — блок всегда отражает реальное состояние.
     recent_eps = []
@@ -579,20 +606,26 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
 
 
 def update_anime_index(sched: dict) -> None:
-    """Перегенерирует docs/anime/index.md из расписания."""
+    """Перегенерирует docs/anime/index.md из расписания — с мини-постерами."""
     today = dt.date.today()
-    lines = []
+    cards = []
     for a in sched["anime"]:
         latest = latest_aired_episode(a, today)
-        latest_str = f"вышло серий: {latest}" if latest else "премьера скоро"
-        lines.append(
-            f"- **[{a['title']}](./{a['slug']}/index.md)** — "
-            f"{a.get('title_ru', '')} · {a.get('season', 1)} сезон · {latest_str}".rstrip()
+        total = int(a.get("episodes", latest or 12))
+        latest_str = f"вышло {latest}/{total}" if latest else "премьера скоро"
+        cover = a.get("cover", "")
+        cover_html = f'<img src="{cover}" style="width: 56px; height: 80px; border-radius: 4px; object-fit: cover;" />' if cover else ""
+        cards.append(
+            f'<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px; border-radius: 8px; background: var(--md-default-fg-color--lightest);">'
+            f'{cover_html}'
+            f'<div><strong><a href="./{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
+            f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {latest_str}</span></div>'
+            f'</div>'
         )
     body = (
         "# 📺 Все тайтлы\n\n"
         "Полное расписание — на странице [Календарь](../calendar.md).\n\n"
-        + "\n".join(lines) + "\n"
+        + "\n".join(cards) + "\n"
     )
     ANIME_DIR.mkdir(parents=True, exist_ok=True)
     (ANIME_DIR / "index.md").write_text(body, encoding="utf-8")

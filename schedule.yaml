@@ -26,6 +26,8 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1229/155022l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1229/155022.jpg
 - slug: kujima-utaeba
   title: Kujima Utaeba Ie Hororo
   title_ru: Дом, в котором щебечет Кудзима
@@ -45,6 +47,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1352/155195l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1352/155195.jpg
 - slug: koori-no-jouheki
   title: Koori no Jouheki
   title_ru: Ледяная стена
@@ -65,6 +69,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1565/154933l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1565/154933.jpg
 - slug: snowball-earth
   title: Snowball Earth
   title_ru: Земля-снежок
@@ -85,6 +91,8 @@ anime:
 
     '
   tone: action
+  cover: https://cdn.myanimelist.net/images/anime/1786/156390l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1786/156390.jpg
 - slug: yomi-no-tsugai
   title: Yomi no Tsugai
   title_ru: Цугаи загробного мира
@@ -106,6 +114,8 @@ anime:
 
     '
   tone: action
+  cover: https://cdn.myanimelist.net/images/anime/1171/156397l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1171/156397.jpg
 - slug: akane-banashi
   title: Akane-banashi
   title_ru: Сказание об Аканэ
@@ -127,6 +137,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1162/155669l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1162/155669.jpg
 - slug: kill-ao
   title: Kill Ao
   title_ru: Убивая юность
@@ -148,6 +160,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1899/156600l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1899/156600.jpg
 - slug: mao
   title: Mao
   title_ru: Мао
@@ -169,6 +183,8 @@ anime:
 
     '
   tone: action
+  cover: https://cdn.myanimelist.net/images/anime/1738/156386l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1738/156386.jpg
 - slug: shunkashuutou-haru
   title: 'Shunkashuutou Daikousha: Haru no Mai'
   title_ru: 'Агенты четырёх сезонов: Весенний танец'
@@ -189,6 +205,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1993/156385l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1993/156385.jpg
 - slug: kami-no-niwatsuki
   title: Kami no Niwatsuki Kusunoki-tei
   title_ru: Божественный сад у поместья Кусуноки
@@ -209,6 +227,8 @@ anime:
 
     '
   tone: comedy
+  cover: https://cdn.myanimelist.net/images/anime/1974/156105l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1974/156105.jpg
 - slug: wistoria-s2
   title: Tsue to Tsurugi no Wistoria
   title_ru: Меч и жезл Вистории (S2)
@@ -231,6 +251,8 @@ anime:
 
     '
   tone: action
+  cover: https://cdn.myanimelist.net/images/anime/1281/144104l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1281/144104.jpg
 - slug: kuroneko-majo
   title: Kuroneko to Majo no Kyoushitsu
   title_ru: Чёрная кошка и класс ведьм
@@ -251,6 +273,8 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1716/153989l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1716/153989.jpg
 - slug: ponkotsu-fuuki
   title: Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK no Hanashi
   title_ru: Бесполезный дежурный и школьница со слишком короткой юбкой
@@ -271,6 +295,8 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1484/155726l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1484/155726.jpg
 - slug: marriagetoxin
   title: Marriagetoxin
   title_ru: Брачный токсин
@@ -291,6 +317,8 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1927/154309l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1927/154309.jpg
 - slug: hidarikiki-no-eren
   title: Hidarikiki no Eren
   title_ru: Левша Эрен
@@ -311,6 +339,8 @@ anime:
 
     '
   tone: drama
+  cover: https://cdn.myanimelist.net/images/anime/1015/156388l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1015/156388.jpg
 - slug: nigashita-sakana
   title: Nigashita Sakana wa Ookikatta ga, Tsuriageta Sakana ga Ookisugita Ken
   title_ru: Рыба, которую я упустила, большая, но я поймала другую, которая ещё больше
@@ -332,6 +362,8 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1045/157132l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1045/157132.jpg
 - slug: otaku-yasashii-gal
   title: Otaku ni Yasashii Gal wa Inai!?
   title_ru: Где те девушки, что были бы добры к отаку?
@@ -353,3 +385,5 @@ anime:
 
     '
   tone: romance
+  cover: https://cdn.myanimelist.net/images/anime/1956/155456l.jpg
+  banner: https://cdn.myanimelist.net/images/anime/1956/155456.jpg
