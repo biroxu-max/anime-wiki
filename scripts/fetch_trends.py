@@ -637,7 +637,7 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
             recent_cards.append(
                 f'<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 10px; border-radius: 8px; background: var(--md-default-fg-color--lightest); border-left: 3px solid var(--md-accent-fg-color);">'
                 f'{cover}'
-                f'<div><strong><a href="anime/{a["slug"]}/ep-{ep:02d}.md">{a.get("title_ru") or a["title"]} — Серия {ep}</a></strong><br>'
+                f'<div><strong><a href="anime/{a["slug"]}/ep-{ep:02d}/">{a.get("title_ru") or a["title"]} — Серия {ep}</a></strong><br>'
                 f'<span style="opacity: 0.7; font-size: 0.9em;">{a["title"]} · {air.strftime("%d.%m")}</span></div>'
                 f'</div>'
             )
@@ -667,7 +667,7 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
             is_today = "🔹 Сегодня" if d == today else ""
             items = []
             for a, ep, has_page in day_eps:
-                link = f'<a href="anime/{a["slug"]}/ep-{ep:02d}.md">Серия {ep}</a>' if has_page else f"Серия {ep} (скоро)"
+                link = f'<a href="anime/{a["slug"]}/ep-{ep:02d}/">Серия {ep}</a>' if has_page else f"Серия {ep} (скоро)"
                 items.append(f'<strong>{a.get("title_ru") or a["title"]}</strong> — {link}')
             week_days.append(f"**{day_name}** {' '.join(i for i in [is_today] if i)}\n" + "\n".join(f"- {i}" for i in items))
     weekly = "\n\n".join(week_days) if week_days else "_На этой неделе нет премьер._"
@@ -704,7 +704,7 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
         cards.append(
             f'<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">'
             f'{cover}'
-            f'<div><strong><a href="anime/{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
+            f'<div><strong><a href="anime/{a["slug"]}/">{a["title"]}</a></strong><br>'
             f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}</span></div>'
             f'</div>'
         )
@@ -726,7 +726,7 @@ def update_anime_index(sched: dict) -> None:
         cards.append(
             f'<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px; border-radius: 8px; background: var(--md-default-fg-color--lightest);">'
             f'{cover_html}'
-            f'<div><strong><a href="./{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
+            f'<div><strong><a href="./{a["slug"]}/">{a["title"]}</a></strong><br>'
             f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {latest_str}</span></div>'
             f'</div>'
         )
@@ -835,6 +835,11 @@ def main() -> int:
                 continue
             for ep in range(1, latest + 1):
                 air = air_date_for_episode(a, ep)
+                # Пропускаем серии, которые ещё не вышли (air_date >= today).
+                # Cron в 06:00 GMT+7 работает до вечернего эфира — сегодняшние серии
+                # ещё не вышли. Они обработаются на следующий день.
+                if air >= today:
+                    continue
                 if (today - air).days > args.since_days:
                     continue
                 if page_path(a, ep).exists() and not args.dry_run and not args.force:
