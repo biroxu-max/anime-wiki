@@ -563,27 +563,18 @@ def update_anime_episodes_block(anime: dict) -> None:
     path.write_text(replace_block(text, "AUTO-EPISODES", inner), encoding="utf-8")
 
 
+def _anime_cover_html(anime: dict, w: int = 48, h: int = 68) -> str:
+    """Мини-постер для карточки."""
+    cover = anime.get("cover", "")
+    return f'<img src="{cover}" style="width: {w}px; height: {h}px; border-radius: 4px; object-fit: cover;" />' if cover else ""
+
+
 def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
     index = DOCS / "index.md"
     text = index.read_text(encoding="utf-8") if index.exists() else ""
+    today = dt.date.today()
 
-    cards = []
-    for a in sched["anime"]:
-        wd = str(a.get("weekday", "")).lower()
-        wd_idx = WEEKDAYS.get(wd)
-        wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else ""
-        cover = a.get("cover", "")
-        cover_html = f'<img src="{cover}" style="width: 48px; height: 68px; border-radius: 4px; object-fit: cover;" />' if cover else ""
-        cards.append(
-            f'<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">'
-            f'{cover_html}'
-            f'<div><strong><a href="anime/{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
-            f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}</span></div>'
-            f'</div>'
-        )
-    text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(cards))
-
-    # «Свежие обновления» считаем с диска — блок всегда отражает реальное состояние.
+    # ── AUTO-RECENT: свежие обсуждения — богатые карточки ──
     recent_eps = []
     for a in sched["anime"]:
         edir = ANIME_DIR / a["slug"]
@@ -593,15 +584,89 @@ def update_index(sched: dict, generated: list[tuple[dict, int]]) -> None:
         if nums:
             recent_eps.append((a, nums[-1]))
     recent_eps.sort(key=lambda x: air_date_for_episode(x[0], x[1]), reverse=True)
-    recent_eps = recent_eps[:5]
+    recent_eps = recent_eps[:6]
+
     if recent_eps:
-        recent = "\n".join(
-            f'- 🆕 **{a["title"]}** — [Серия {ep}](anime/{a["slug"]}/ep-{ep:02d}.md)'
-            for a, ep in recent_eps
-        )
+        recent_cards = []
+        for a, ep in recent_eps:
+            air = air_date_for_episode(a, ep)
+            cover = _anime_cover_html(a, 56, 80)
+            recent_cards.append(
+                f'<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 10px; border-radius: 8px; background: var(--md-default-fg-color--lightest); border-left: 3px solid var(--md-accent-fg-color);">'
+                f'{cover}'
+                f'<div><strong><a href="anime/{a["slug"]}/ep-{ep:02d}.md">{a.get("title_ru") or a["title"]} — Серия {ep}</a></strong><br>'
+                f'<span style="opacity: 0.7; font-size: 0.9em;">{a["title"]} · {air.strftime("%d.%m")}</span></div>'
+                f'</div>'
+            )
+        recent = "\n".join(recent_cards)
     else:
         recent = "_Пока нет обновлений. Они появятся после первого запуска генератора._"
     text = replace_block(text, "AUTO-RECENT", recent)
+
+    # ── AUTO-WEEKLY: что вышло на этой неделе (по дням) ──
+    week_start = today - dt.timedelta(days=today.weekday())  # понедельник
+    week_end = week_start + dt.timedelta(days=6)             # воскресенье
+    week_days = []
+    for offset in range(7):
+        d = week_start + dt.timedelta(days=offset)
+        day_eps = []
+        for a in sched["anime"]:
+            latest = latest_aired_episode(a, today)
+            if not latest:
+                continue
+            for ep in range(1, latest + 1):
+                air = air_date_for_episode(a, ep)
+                if air == d:
+                    has_page = (ANIME_DIR / a["slug"] / f"ep-{ep:02d}.md").exists()
+                    day_eps.append((a, ep, has_page))
+        if day_eps:
+            day_name = RU_WEEKDAYS[d.weekday()].capitalize()
+            is_today = "🔹 Сегодня" if d == today else ""
+            items = []
+            for a, ep, has_page in day_eps:
+                link = f'<a href="anime/{a["slug"]}/ep-{ep:02d}.md">Серия {ep}</a>' if has_page else f"Серия {ep} (скоро)"
+                items.append(f'<strong>{a.get("title_ru") or a["title"]}</strong> — {link}')
+            week_days.append(f"**{day_name}** {' '.join(i for i in [is_today] if i)}\n" + "\n".join(f"- {i}" for i in items))
+    weekly = "\n\n".join(week_days) if week_days else "_На этой неделе нет премьер._"
+    text = replace_block(text, "AUTO-WEEKLY", weekly)
+
+    # ── AUTO-UPCOMING: на очереди (что выйдет в ближайшие 3 дня) ──
+    upcoming = []
+    for a in sched["anime"]:
+        latest = latest_aired_episode(a, today)
+        total = int(a.get("episodes", latest or 12))
+        next_ep = latest + 1 if latest < total else 0
+        if next_ep == 0:
+            continue
+        next_air = air_date_for_episode(a, next_ep)
+        days_until = (next_air - today).days
+        if 0 <= days_until <= 7:
+            wd = str(a.get("weekday", "")).lower()
+            wd_idx = WEEKDAYS.get(wd)
+            wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else ""
+            when = "завтра" if days_until == 1 else ("сегодня" if days_until == 0 else f"через {days_until} дн.")
+            cover = _anime_cover_html(a, 40, 56)
+            upcoming.append((days_until, f'<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">{cover}<div><strong>{a.get("title_ru") or a["title"]}</strong> — Серия {next_ep}<br><span style="opacity: 0.7; font-size: 0.85em;">{when} · {next_air.strftime("%d.%m")}</span></div></div>'))
+    upcoming.sort(key=lambda x: x[0])
+    upcoming_html = "\n".join(u[1] for u in upcoming[:5]) if upcoming else "_Все текущие серии вышли._"
+    text = replace_block(text, "AUTO-UPCOMING", upcoming_html)
+
+    # ── AUTO-ANIME-LIST: компактная сетка всех тайтлов ──
+    cards = []
+    for a in sched["anime"]:
+        wd = str(a.get("weekday", "")).lower()
+        wd_idx = WEEKDAYS.get(wd)
+        wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else ""
+        cover = _anime_cover_html(a, 48, 68)
+        cards.append(
+            f'<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">'
+            f'{cover}'
+            f'<div><strong><a href="anime/{a["slug"]}/index.md">{a["title"]}</a></strong><br>'
+            f'<span style="opacity: 0.7; font-size: 0.9em;">{a.get("title_ru", "")} · {a.get("season", 1)} сезон · {wd_ru}</span></div>'
+            f'</div>'
+        )
+    text = replace_block(text, "AUTO-ANIME-LIST", "\n".join(cards))
+
     index.write_text(text, encoding="utf-8")
 
 
