@@ -142,8 +142,10 @@ PROMPT_TEMPLATE = """\
 фандома. Пиши как живой человек, а не как энциклопедия — образно, с эмоциями, \
 собственным голосом. Не пиши сухими списками.
 
-Аниме: {title} (яп. {title_jp}; другие названия: {aliases}).
-Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
+Аниме: {title} (яп. {title_jp}; другие названия: {aliases}). \
+Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}. \
+ВНИМАНИЕ: обсуждай ТОЛЬКО серию {episode}. Если в источниках упоминаются \
+другие эпизоды — полностью игнорируй этот контент.
 
 Ниже — свежие обсуждения из интернета, появившиеся после выхода этой серии. \
 Источники могут быть на английском или японском (5ch) — обобщай их на русском, \
@@ -365,26 +367,18 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
         jp_query = f"{title_jp} {episode}話"  # «第12話»-стиль
         jp_results = _do_one_search(client, jp_query, episode, air_date, ["5ch.net"], anime)
 
-    # Диверсификация: приоритет эпизод-специфичным (с номером серии), затем JP 5ch.
-    # Объединяем форумы + обзоры; специфичные (review "Episode 11 Recap") идут первыми.
+    # ── ОТБОР: только эпизод-специфичные результаты + JP 5ch ──
+    # КРИТИЧНО: общие (не-matching) результаты содержат контент про ДРУГИЕ серии
+    # (ep1, ep7, ep8...) → смешивание. Лучше меньше источников, но все релевантные.
     en_all = en_results + rev_results
     en_spec = [r for r in en_all if r.get("_spec")]
-    en_gen = [r for r in en_all if not r.get("_spec")]
     # дедуп по URL
-    _seen = set()
-    en_spec = [r for r in en_spec if not (r.get("url") in _seen or _seen.add(r.get("url")))]
-    en_gen = [r for r in en_gen if not (r.get("url") in _seen or _seen.add(r.get("url")))]
+    _seen_urls = set()
+    en_spec = [r for r in en_spec if not (r.get("url") in _seen_urls or _seen_urls.add(r.get("url")))]
+    jp_spec = [r for r in jp_results if r.get("_spec")] or jp_results  # 5ch потоки — берём даже без ep-маркера
+    jp_spec = [r for r in jp_spec if not (r.get("url") in _seen_urls or _seen_urls.add(r.get("url")))]
 
-    picked = en_spec[:5]  # специфичные (с номером серии) — основа страницы
-    picked += jp_results[:2]  # JP 5ch («золото»)
-    # добиваем общими до 8
-    seen = {r.get("url") for r in picked}
-    for r in en_gen:
-        if len(picked) >= 8:
-            break
-        if r.get("url") not in seen:
-            picked.append(r)
-            seen.add(r.get("url"))
+    picked = en_spec[:6] + jp_spec[:2]  # до 6 эпизод-специфичных + до 2 JP
     picked = picked[:8]
 
     if not picked:
