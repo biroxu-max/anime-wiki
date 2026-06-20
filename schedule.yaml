@@ -1,259 +1,355 @@
-# Расписание выхода аниме и настройки генератора трендов.
-# Добавляй сюда новые тайтлы — fetch_trends.py и вики подхватят их автоматически.
-#
-# Даты премьер — реальные (MyAnimeList). Число серий: реальные где известно,
-# иначе оценка 12 (типичная длина тайтла). Ночные эфиры (24:00 = 00:00 след. дня)
-# отнесены к пред. дню по японской телеконвенции.
-
-timezone: "Asia/Tokyo"
-language: "ru"
-llm_model: "glm-5-turbo"        # модель GLM (Z.AI) — верифицировано
-llm_max_tokens: 4000             # щедрый лимит — вика для вдохновения (восстановлено после перехода на GLM)
-llm_inter_call_delay: 2          # пауза (сек) между сериями; GLM не имеет жёсткого rate-limit, 2с — страховка для Tavily
-
+timezone: Asia/Tokyo
+language: ru
+llm_model: glm-5.2
+llm_max_tokens: 4000
+llm_inter_call_delay: 2
 anime:
+- slug: himekishi
+  title: Himekishi wa Barbaroi no Yome
+  title_ru: Принцесса-рыцарь — невеста варвара
+  title_jp: 姫騎士は蛮族の嫁
+  aliases:
+  - The Barbarian's Bride
+  - Himekishi wa Banzoku no Yome
+  season: 1
+  weekday: Thursday
+  time: '21:30'
+  start_date: '2026-04-09'
+  episodes: 12
+  tags:
+  - комедия
+  - фэнтези
+  - романтика
+  synopsis: '«Просто убей меня!» — эти слова произносит Серафина де Лавийян, сильнейшая
+    женщина-рыцарь Запада, когда её берёт в плен предводитель варваров. Вместо казни
+    он предлагает ей стать его невестой.
 
-  # ==================== ЧЕТВЕРГ ====================
-  - slug: "himekishi"
-    title: "Himekishi wa Barbaroi no Yome"
-    title_ru: "Принцесса-рыцарь — невеста варвара"
-    title_jp: "姫騎士は蛮族の嫁"
-    aliases: ["The Barbarian's Bride", "Himekishi wa Banzoku no Yome"]
-    season: 1
-    weekday: "Thursday"
-    time: "21:30"
-    start_date: "2026-04-09"
-    episodes: 12
-    tags: ["комедия", "фэнтези", "романтика"]
-    synopsis: >
-      «Просто убей меня!» — эти слова произносит Серафина де Лавийян, сильнейшая женщина-рыцарь Запада, когда её берёт в плен предводитель варваров. Вместо казни он предлагает ей стать его невестой.
+    '
+  tone: romance
+- slug: kujima-utaeba
+  title: Kujima Utaeba Ie Hororo
+  title_ru: Дом, в котором щебечет Кудзима
+  title_jp: くじまうたえば家ほろろ
+  aliases:
+  - Kujima Utaeba Ie Hororo
+  season: 1
+  weekday: Thursday
+  time: '22:30'
+  start_date: '2026-04-09'
+  episodes: 12
+  tags:
+  - драма
+  - повседневность
+  synopsis: 'История о доме и людях, чьи жизни переплетаются вокруг таинственного
+    щебетания.
 
-  - slug: "kujima-utaeba"
-    title: "Kujima Utaeba Ie Hororo"
-    title_ru: "Дом, в котором щебечет Кудзима"
-    title_jp: "くじまうたえば家ほろろ"
-    aliases: ["Kujima Utaeba Ie Hororo"]
-    season: 1
-    weekday: "Thursday"
-    time: "22:30"
-    start_date: "2026-04-09"
-    episodes: 12
-    tags: ["драма", "повседневность"]
-    synopsis: >
-      История о доме и людях, чьи жизни переплетаются вокруг таинственного щебетания.
+    '
+  tone: drama
+- slug: koori-no-jouheki
+  title: Koori no Jouheki
+  title_ru: Ледяная стена
+  title_jp: 氷の城壁
+  aliases:
+  - The Ramparts of Ice
+  season: 1
+  weekday: Thursday
+  time: '23:00'
+  start_date: '2026-04-02'
+  episodes: 12
+  tags:
+  - драма
+  - романтика
+  - повседневность
+  synopsis: 'Коюки Хикава, известная как «Ледяная королева», выстраивает вокруг себя
+    холодную стену — пока один человек не помогает ей её разрушить.
 
-  - slug: "koori-no-jouheki"
-    title: "Koori no Jouheki"
-    title_ru: "Ледяная стена"
-    title_jp: "氷の城壁"
-    aliases: ["The Ramparts of Ice"]
-    season: 1
-    weekday: "Thursday"
-    time: "23:00"
-    start_date: "2026-04-02"
-    episodes: 12
-    tags: ["драма", "романтика", "повседневность"]
-    synopsis: >
-      Коюки Хикава, известная как «Ледяная королева», выстраивает вокруг себя холодную стену — пока один человек не помогает ей её разрушить.
+    '
+  tone: drama
+- slug: snowball-earth
+  title: Snowball Earth
+  title_ru: Земля-снежок
+  title_jp: スノーボールアース
+  aliases:
+  - Snowball Earth
+  season: 1
+  weekday: Friday
+  time: 00:00
+  start_date: '2026-04-03'
+  episodes: 12
+  tags:
+  - фантастика
+  - экшен
+  - постапокалипсис
+  synopsis: 'В мире, скованном вселенским оледенением, выжившие сражаются за остатки
+    тепла и надежды.
 
-  # ==================== ПЯТНИЦА ====================
-  - slug: "snowball-earth"
-    title: "Snowball Earth"
-    title_ru: "Земля-снежок"
-    title_jp: "スノーボールアース"
-    aliases: ["Snowball Earth"]
-    season: 1
-    weekday: "Friday"
-    time: "00:00"
-    start_date: "2026-04-03"
-    episodes: 12
-    tags: ["фантастика", "экшен", "постапокалипсис"]
-    synopsis: >
-      В мире, скованном вселенским оледенением, выжившие сражаются за остатки тепла и надежды.
+    '
+  tone: action
+- slug: yomi-no-tsugai
+  title: Yomi no Tsugai
+  title_ru: Цугаи загробного мира
+  title_jp: 黄泉のツガイ
+  aliases:
+  - Daemons of the Shadow Realm
+  - Yomi no Tsugai
+  season: 1
+  weekday: Saturday
+  time: '24:00'
+  start_date: '2026-04-04'
+  episodes: 12
+  tags:
+  - фэнтези
+  - экшен
+  - приключения
+  synopsis: 'От автора Fullmetal Alchemist: близнецы с даром повелевать духами-цугаями
+    отправляются в опасное путешествие по миру, где скрыта правда об их народе.
 
-  # ==================== СУББОТА ====================
-  - slug: "yomi-no-tsugai"
-    title: "Yomi no Tsugai"
-    title_ru: "Цугаи загробного мира"
-    title_jp: "黄泉のツガイ"
-    aliases: ["Daemons of the Shadow Realm", "Yomi no Tsugai"]
-    season: 1
-    weekday: "Saturday"
-    time: "24:00"
-    start_date: "2026-04-04"
-    episodes: 12
-    tags: ["фэнтези", "экшен", "приключения"]
-    synopsis: >
-      От автора Fullmetal Alchemist: близнецы с даром повелевать духами-цугаями отправляются в опасное путешествие по миру, где скрыта правда об их народе.
+    '
+  tone: action
+- slug: akane-banashi
+  title: Akane-banashi
+  title_ru: Сказание об Аканэ
+  title_jp: アカネバナシ
+  aliases:
+  - Akane-banashi
+  season: 1
+  weekday: Saturday
+  time: '24:30'
+  start_date: '2026-04-04'
+  episodes: 12
+  tags:
+  - повседневность
+  - драма
+  - искусство
+  synopsis: 'Юная Аканэ мечтает стать профессиональной ракуго-рассказчицей и идёт
+    по стопам своего отца, преодолевая традиции консервативного мира исполнительского
+    искусства.
 
-  - slug: "akane-banashi"
-    title: "Akane-banashi"
-    title_ru: "Сказание об Аканэ"
-    title_jp: "アカネバナシ"
-    aliases: ["Akane-banashi"]
-    season: 1
-    weekday: "Saturday"
-    time: "24:30"
-    start_date: "2026-04-04"
-    episodes: 12
-    tags: ["повседневность", "драма", "искусство"]
-    synopsis: >
-      Юная Аканэ мечтает стать профессиональной ракуго-рассказчицей и идёт по стопам своего отца, преодолевая традиции консервативного мира исполнительского искусства.
+    '
+  tone: drama
+- slug: kill-ao
+  title: Kill Ao
+  title_ru: Убивая юность
+  title_jp: キル・アオ
+  aliases:
+  - Kill Ao
+  - Kill Blue
+  season: 1
+  weekday: Saturday
+  time: '25:00'
+  start_date: '2026-04-11'
+  episodes: 12
+  tags:
+  - экшен
+  - драма
+  - школа
+  synopsis: 'Школьные будни, в которых дружба и насилие сплетаются в опасную игру
+    на выживание подростковых эмоций.
 
-  - slug: "kill-ao"
-    title: "Kill Ao"
-    title_ru: "Убивая юность"
-    title_jp: "キル・アオ"
-    aliases: ["Kill Ao", "Kill Blue"]
-    season: 1
-    weekday: "Saturday"
-    time: "25:00"
-    start_date: "2026-04-11"
-    episodes: 12
-    tags: ["экшен", "драма", "школа"]
-    synopsis: >
-      Школьные будни, в которых дружба и насилие сплетаются в опасную игру на выживание подростковых эмоций.
+    '
+  tone: drama
+- slug: mao
+  title: Mao
+  title_ru: Мао
+  title_jp: マオ
+  aliases:
+  - MAO
+  season: 1
+  weekday: Saturday
+  time: '17:30'
+  start_date: '2026-04-04'
+  episodes: 12
+  tags:
+  - фэнтези
+  - экшен
+  - романтика
+  - сверхъестественное
+  synopsis: 'Новая работа Румико Такахаси: девушка из нашего времени и юноша из эпохи
+    Мэйдзи пересекаются сквозь века, охотясь на демонов и распутывая тайну проклятия.
 
-  - slug: "mao"
-    title: "Mao"
-    title_ru: "Мао"
-    title_jp: "マオ"
-    aliases: ["MAO"]
-    season: 1
-    weekday: "Saturday"
-    time: "17:30"
-    start_date: "2026-04-04"
-    episodes: 12
-    tags: ["фэнтези", "экшен", "романтика", "сверхъестественное"]
-    synopsis: >
-      Новая работа Румико Такахаси: девушка из нашего времени и юноша из эпохи Мэйдзи пересекаются сквозь века, охотясь на демонов и распутывая тайну проклятия.
+    '
+  tone: action
+- slug: shunkashuutou-haru
+  title: 'Shunkashuutou Daikousha: Haru no Mai'
+  title_ru: 'Агенты четырёх сезонов: Весенний танец'
+  title_jp: 春夏秋冬代行者 春の舞
+  aliases:
+  - 'Agents of the Four Seasons: Dance of Spring'
+  season: 1
+  weekday: Saturday
+  time: '24:00'
+  start_date: '2026-03-29'
+  episodes: 14
+  tags:
+  - фэнтези
+  - драма
+  - романтика
+  synopsis: 'В мире, где времена года управляются избранными агентами, юная Богиня
+    Весны и её защитник готовятся провести первый весенний ритуал.
 
-  - slug: "shunkashuutou-haru"
-    title: "Shunkashuutou Daikousha: Haru no Mai"
-    title_ru: "Агенты четырёх сезонов: Весенний танец"
-    title_jp: "春夏秋冬代行者 春の舞"
-    aliases: ["Agents of the Four Seasons: Dance of Spring"]
-    season: 1
-    weekday: "Saturday"
-    time: "24:00"
-    start_date: "2026-03-29"
-    episodes: 14
-    tags: ["фэнтези", "драма", "романтика"]
-    synopsis: >
-      В мире, где времена года управляются избранными агентами, юная Богиня Весны и её защитник готовятся провести первый весенний ритуал.
+    '
+  tone: drama
+- slug: kami-no-niwatsuki
+  title: Kami no Niwatsuki Kusunoki-tei
+  title_ru: Божественный сад у поместья Кусуноки
+  title_jp: 神の庭付き楠木邸
+  aliases:
+  - Kusunoki's Garden of Gods
+  season: 1
+  weekday: Saturday
+  time: '25:00'
+  start_date: '2026-04-05'
+  episodes: 12
+  tags:
+  - фэнтези
+  - повседневность
+  - комедия
+  synopsis: 'Молодой человек получает в наследство старинное поместье — и обнаруживает,
+    что его сад населён самыми настоящими богами.
 
-  - slug: "kami-no-niwatsuki"
-    title: "Kami no Niwatsuki Kusunoki-tei"
-    title_ru: "Божественный сад у поместья Кусуноки"
-    title_jp: "神の庭付き楠木邸"
-    aliases: ["Kusunoki's Garden of Gods"]
-    season: 1
-    weekday: "Saturday"
-    time: "25:00"
-    start_date: "2026-04-05"
-    episodes: 12
-    tags: ["фэнтези", "повседневность", "комедия"]
-    synopsis: >
-      Молодой человек получает в наследство старинное поместье — и обнаруживает, что его сад населён самыми настоящими богами.
+    '
+  tone: comedy
+- slug: wistoria-s2
+  title: Tsue to Tsurugi no Wistoria
+  title_ru: Меч и жезл Вистории (S2)
+  title_jp: 杖と剣のウィストリア
+  aliases:
+  - 'Wistoria: Wand and Sword'
+  - Wistoria Season 2
+  season: 2
+  weekday: Sunday
+  time: '24:00'
+  start_date: '2026-05-03'
+  episodes: 12
+  tags:
+  - фэнтези
+  - экшен
+  - школа
+  - приключения
+  synopsis: 'Второй сезон: Вистория, неспособный на магию, но непревзойдённый с мечом,
+    продолжает прорываться сквозь испытания магической академии.
 
-  # ==================== ВОСКРЕСЕНЬЕ ====================
-  - slug: "wistoria-s2"
-    title: "Tsue to Tsurugi no Wistoria"
-    title_ru: "Меч и жезл Вистории (S2)"
-    title_jp: "杖と剣のウィストリア"
-    aliases: ["Wistoria: Wand and Sword", "Wistoria Season 2"]
-    season: 2
-    weekday: "Sunday"
-    time: "24:00"
-    start_date: "2026-05-03"
-    episodes: 12
-    tags: ["фэнтези", "экшен", "школа", "приключения"]
-    synopsis: >
-      Второй сезон: Вистория, неспособный на магию, но непревзойдённый с мечом, продолжает прорываться сквозь испытания магической академии.
+    '
+  tone: action
+- slug: kuroneko-majo
+  title: Kuroneko to Majo no Kyoushitsu
+  title_ru: Чёрная кошка и класс ведьм
+  title_jp: 黒猫と魔女の教室
+  aliases:
+  - The Classroom of a Black Cat and a Witch
+  season: 1
+  weekday: Sunday
+  time: '23:30'
+  start_date: '2026-04-12'
+  episodes: 12
+  tags:
+  - фэнтези
+  - романтика
+  - школа
+  synopsis: 'Юный волшебник, проклятый жить как чёрный кот, и ведьма-одноклассница,
+    которой суждено его погубить, — но судьба намекает на нечто иное.
 
-  - slug: "kuroneko-majo"
-    title: "Kuroneko to Majo no Kyoushitsu"
-    title_ru: "Чёрная кошка и класс ведьм"
-    title_jp: "黒猫と魔女の教室"
-    aliases: ["The Classroom of a Black Cat and a Witch"]
-    season: 1
-    weekday: "Sunday"
-    time: "23:30"
-    start_date: "2026-04-12"
-    episodes: 12
-    tags: ["фэнтези", "романтика", "школа"]
-    synopsis: >
-      Юный волшебник, проклятый жить как чёрный кот, и ведьма-одноклассница, которой суждено его погубить, — но судьба намекает на нечто иное.
+    '
+  tone: romance
+- slug: ponkotsu-fuuki
+  title: Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK no Hanashi
+  title_ru: Бесполезный дежурный и школьница со слишком короткой юбкой
+  title_jp: ポンコツ風紀委員とスカート丈が不適切なJKの話
+  aliases:
+  - Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK
+  season: 1
+  weekday: Monday
+  time: '24:00'
+  start_date: '2026-04-06'
+  episodes: 12
+  tags:
+  - комедия
+  - романтика
+  - школа
+  synopsis: 'Строгий, но на деле никчёмный член дисциплинарного комитета и бойкая
+    школьница с «неположенной» длиной юбки — комедия положений на фоне школьной влюблённости.
 
-  # ==================== ПОНЕДЕЛЬНИК ====================
-  - slug: "ponkotsu-fuuki"
-    title: "Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK no Hanashi"
-    title_ru: "Бесполезный дежурный и школьница со слишком короткой юбкой"
-    title_jp: "ポンコツ風紀委員とスカート丈が不適切なJKの話"
-    aliases: ["Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK"]
-    season: 1
-    weekday: "Monday"
-    time: "24:00"
-    start_date: "2026-04-06"
-    episodes: 12
-    tags: ["комедия", "романтика", "школа"]
-    synopsis: >
-      Строгий, но на деле никчёмный член дисциплинарного комитета и бойкая школьница с «неположенной» длиной юбки — комедия положений на фоне школьной влюблённости.
+    '
+  tone: romance
+- slug: marriagetoxin
+  title: Marriagetoxin
+  title_ru: Брачный токсин
+  title_jp: マリッジトキシン
+  aliases:
+  - Marriagetoxin
+  season: 1
+  weekday: Tuesday
+  time: '24:00'
+  start_date: '2026-04-07'
+  episodes: 12
+  tags:
+  - экшен
+  - комедия
+  - романтика
+  synopsis: 'Гений детективного дела и наёмная убийца заключают фиктивный брак, чтобы
+    каждый достиг своей цели — но токсичная сделка грозит перерасти во что-то настоящее.
 
-  # ==================== ВТОРНИК ====================
-  - slug: "marriagetoxin"
-    title: "Marriagetoxin"
-    title_ru: "Брачный токсин"
-    title_jp: "マリッジトキシン"
-    aliases: ["Marriagetoxin"]
-    season: 1
-    weekday: "Tuesday"
-    time: "24:00"
-    start_date: "2026-04-07"
-    episodes: 12
-    tags: ["экшен", "комедия", "романтика"]
-    synopsis: >
-      Гений детективного дела и наёмная убийца заключают фиктивный брак, чтобы каждый достиг своей цели — но токсичная сделка грозит перерасти во что-то настоящее.
+    '
+  tone: romance
+- slug: hidarikiki-no-eren
+  title: Hidarikiki no Eren
+  title_ru: Левша Эрен
+  title_jp: 左利きのエレン
+  aliases:
+  - Eren the Southpaw
+  season: 1
+  weekday: Tuesday
+  time: '24:00'
+  start_date: '2026-04-08'
+  episodes: 13
+  tags:
+  - спорт
+  - драма
+  - повседневность
+  synopsis: 'Леворукий питчер Эрен и его catcher-напарник пытаются возродить школьную
+    бейсбольную команду и дойти до вершин школьного спорта.
 
-  - slug: "hidarikiki-no-eren"
-    title: "Hidarikiki no Eren"
-    title_ru: "Левша Эрен"
-    title_jp: "左利きのエレン"
-    aliases: ["Eren the Southpaw"]
-    season: 1
-    weekday: "Tuesday"
-    time: "24:00"
-    start_date: "2026-04-08"
-    episodes: 13
-    tags: ["спорт", "драма", "повседневность"]
-    synopsis: >
-      Леворукий питчер Эрен и его catcher-напарник пытаются возродить школьную бейсбольную команду и дойти до вершин школьного спорта.
+    '
+  tone: drama
+- slug: nigashita-sakana
+  title: Nigashita Sakana wa Ookikatta ga, Tsuriageta Sakana ga Ookisugita Ken
+  title_ru: Рыба, которую я упустила, большая, но я поймала другую, которая ещё больше
+  title_jp: 逃がした魚は大きかったが釣り上げた魚が大きすぎた件
+  aliases:
+  - Always a Catch!
+  - The Fish I Missed Was Big, But the One I Caught Was Too Big
+  season: 1
+  weekday: Wednesday
+  time: '23:00'
+  start_date: '2026-04-08'
+  episodes: 12
+  tags:
+  - комедия
+  - фэнтези
+  - романтика
+  synopsis: 'Закалённая боями благородная девица и её неожиданно «крупный улов» —
+    романтическая комедия о странных обстоятельствах знакомства и чувств.
 
-  # ==================== СРЕДА ====================
-  - slug: "nigashita-sakana"
-    title: "Nigashita Sakana wa Ookikatta ga, Tsuriageta Sakana ga Ookisugita Ken"
-    title_ru: "Рыба, которую я упустила, большая, но я поймала другую, которая ещё больше"
-    title_jp: "逃がした魚は大きかったが釣り上げた魚が大きすぎた件"
-    aliases: ["Always a Catch!", "The Fish I Missed Was Big, But the One I Caught Was Too Big"]
-    season: 1
-    weekday: "Wednesday"
-    time: "23:00"
-    start_date: "2026-04-08"
-    episodes: 12
-    tags: ["комедия", "фэнтези", "романтика"]
-    synopsis: >
-      Закалённая боями благородная девица и её неожиданно «крупный улов» — романтическая комедия о странных обстоятельствах знакомства и чувств.
+    '
+  tone: romance
+- slug: otaku-yasashii-gal
+  title: Otaku ni Yasashii Gal wa Inai!?
+  title_ru: Где те девушки, что были бы добры к отаку?
+  title_jp: オタクに優しいギャルはいない!?
+  aliases:
+  - Otaku ni Yasashii Gal wa Inai!?
+  - No Kind Gals for Otaku!?
+  season: 1
+  weekday: Wednesday
+  time: '23:45'
+  start_date: '2026-04-08'
+  episodes: 12
+  tags:
+  - комедия
+  - романтика
+  - школа
+  synopsis: 'Застенчивый отаку задаётся вопросом, существует ли добрая к нему гяру
+    — и судьба подкидывает ему встречу, которая перевернёт его школьные будни.
 
-  - slug: "otaku-yasashii-gal"
-    title: "Otaku ni Yasashii Gal wa Inai!?"
-    title_ru: "Где те девушки, что были бы добры к отаку?"
-    title_jp: "オタクに優しいギャルはいない!?"
-    aliases: ["Otaku ni Yasashii Gal wa Inai!?", "No Kind Gals for Otaku!?"]
-    season: 1
-    weekday: "Wednesday"
-    time: "23:45"
-    start_date: "2026-04-08"
-    episodes: 12
-    tags: ["комедия", "романтика", "школа"]
-    synopsis: >
-      Застенчивый отаку задаётся вопросом, существует ли добрая к нему гяру — и судьба подкидывает ему встречу, которая перевернёт его школьные будни.
+    '
+  tone: romance
