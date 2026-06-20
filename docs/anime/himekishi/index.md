@@ -3,6 +3,7 @@ tags:
   - комедия
   - фэнтези
   - романтика
+title: "Принцесса-рыцарь — невеста варвара"
 ---
 
 # Himekishi wa Barbaroi no Yome

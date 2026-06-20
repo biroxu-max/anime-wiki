@@ -4,6 +4,7 @@ tags:
   - экшен
   - школа
   - приключения
+title: "Меч и жезл Вистории (S2)"
 ---
 
 # Tsue to Tsurugi no Wistoria

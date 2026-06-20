@@ -7,7 +7,7 @@
 
 timezone: "Asia/Tokyo"
 language: "ru"
-llm_model: "glm-4.6"             # модель GLM (Z.AI)
+llm_model: "glm-5-turbo"        # модель GLM (Z.AI) — верифицировано
 llm_max_tokens: 2000             # лимит длины ответа GLM
 llm_inter_call_delay: 5          # пауза (сек) между запросами при батч-генерации
 

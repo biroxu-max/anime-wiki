@@ -89,12 +89,20 @@ def latest_aired_episode(anime: dict, today: dt.date) -> int:
     return min(weeks_passed + 1, int(anime.get("episodes", weeks_passed + 1)))
 
 
-def _front_matter_tags(anime: dict) -> str:
+def _front_matter(anime: dict, *, hide_nav: bool = False, nav_title: str | None = None) -> str:
+    """Собирает YAML front-matter: теги + опционально hide:navigation + nav title."""
+    parts = []
     tags = anime.get("tags", [])
-    if not tags:
+    if tags:
+        parts.append("tags:\n" + "\n".join(f"  - {t}" for t in tags))
+    if hide_nav:
+        parts.append("hide:\n  - navigation")
+    if nav_title:
+        # Экранируем кавычки в YAML строке
+        parts.append(f'title: "{nav_title.replace(chr(34), chr(92)+chr(34))}"')
+    if not parts:
         return ""
-    body = "\n".join(f"  - {t}" for t in tags)
-    return f"---\ntags:\n{body}\n---\n\n"
+    return "---\n" + "\n".join(parts) + "\n---\n\n"
 
 
 def _tags_plain(anime: dict) -> str:
@@ -127,7 +135,7 @@ PROMPT_TEMPLATE = """\
 Аниме: {title} (яп. {title_jp}; другие названия: {aliases}).
 Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
 
-Ниже — свежие обсуждения из интернета (последние 2 недели):
+Ниже — свежие обсуждения из интернета, появившиеся после выхода этой серии:
 
 {context}
 
@@ -170,8 +178,25 @@ class TrendResult:
     sources: list[dict]  # [{"uri":..., "title":...}]
 
 
-def _tavily_search(anime: dict, episode: int) -> tuple[str, list[dict]]:
-    """Ищет свежие обсуждения серии через Tavily. Возвращает (контекст, источники)."""
+def _episode_matches(text: str, episode: int) -> bool:
+    """Проверяет, упоминает ли URL/заголовок конкретно этот номер серии
+    (episode_12, episode-12, ep.12, 'episode 12'). Не ловит 'episode 2' при N=12."""
+    # Ищем "episode" + граница + ровно номер N (не N как часть другого числа)
+    patterns = [
+        rf"episode[\s_-]{episode}\b",
+        rf"\bep[\s_.-]{episode}\b",
+        rf"#\s*{episode}\b",
+    ]
+    return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+
+def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, list[dict]]:
+    """Ищет свежие обсуждения КОНКРЕТНОЙ серии через Tavily. Возвращает (контекст, источники).
+
+    Ключевое: фильтруем по дате эфира (start_date) и доменам-форумам, затем
+    постфильтруем результаты, оставляя те, где URL/заголовок упоминают именно
+    этот номер серии. Это решает баг «общие обзоры / обсуждения 1-й серии».
+    """
     try:
         from tavily import TavilyClient
     except ImportError:
@@ -183,29 +208,43 @@ def _tavily_search(anime: dict, episode: int) -> tuple[str, list[dict]]:
 
     client = TavilyClient(api_key=api_key)
 
-    # Запрос: основное название + альтернативные, номер серии, ключевые слова
     aliases = anime.get("aliases", [])
     title_parts = [anime["title"]] + aliases[:2]
-    query = f"{' '.join(title_parts)} episode {episode} discussion review reactions"
+    query = f"{' '.join(title_parts)} episode {episode} discussion"
+
+    # Домены с реальными обсуждениями (а не SEO-обзорами): Reddit, MAL, Anilist, YouTube
+    discussion_domains = ["reddit.com", "myanimelist.net", "anilist.co", "youtube.com"]
 
     response = client.search(
         query=query,
-        max_results=5,
-        days=14,  # свежесть: последние 2 недели
-        search_depth="advanced",  # глубже → больше релевантного контента
+        max_results=8,
+        search_depth="advanced",
+        start_date=air_date.isoformat(),  # только с даты эфира этой серии!
+        include_domains=discussion_domains,
     )
-
     results = response.get("results", [])
-    if not results:
+
+    # Постфильтр: приоритет результатам, где URL/заголовок явно про этот эпизод
+    specific, general = [], []
+    for r in results:
+        haystack = (r.get("url", "") + " " + r.get("title", ""))
+        (specific if _episode_matches(haystack, episode) else general).append(r)
+
+    # Берём сначала эпизод-специфичные, добиваем общими до 5
+    picked = specific[:5]
+    if len(picked) < 3:
+        picked.extend(general[: 3 - len(picked)])
+    picked = picked[:5]
+
+    if not picked:
         return "", []
 
-    # Контекст для GLM: заголовок + контент каждого результата
     context_parts = []
     sources = []
-    for i, r in enumerate(results):
+    for i, r in enumerate(picked):
         title = r.get("title", "")
         url = r.get("url", "")
-        content = r.get("content", "")[:800]  # ограничиваем длину каждого источника
+        content = r.get("content", "")[:800]
         context_parts.append(f"[{i+1}] {title}\n{url}\n{content}")
         if url:
             sources.append({"uri": url, "title": title or url})
@@ -238,7 +277,7 @@ def _glm_generate(prompt: str, *, model: str, max_tokens: int) -> str:
 def fetch_trends(anime: dict, episode: int, air_date: dt.date, *, model: str, max_tokens: int) -> TrendResult:
     """Полный цикл: Tavily поиск → GLM генерация. Требует GLM_API_KEY и TAVILY_API_KEY."""
     # 1. Поиск свежих обсуждений через Tavily
-    context, sources = _tavily_search(anime, episode)
+    context, sources = _tavily_search(anime, episode, air_date)
 
     if not context.strip():
         print(f"  ⚠️  Tavily не нашёл результатов для {anime['slug']} ep{episode} — пропускаю.")
@@ -289,7 +328,7 @@ def render_episode_page(anime: dict, episode: int, air_date: dt.date, result: Tr
         sources_md = f"\n## 🔗 Источники\n\n{items}\n"
 
     return _EPISODE_TMPL.format(
-        front_matter=_front_matter_tags(anime),
+        front_matter=_front_matter(anime, hide_nav=True),
         title=anime["title"],
         episode=episode,
         episode_badge=f"{episode:02d}",
@@ -355,7 +394,7 @@ def ensure_anime_page(anime: dict) -> Path:
     wd_idx = WEEKDAYS.get(wd)
     wd_ru = f"по {RU_WEEKDAYS_PREP[wd_idx]}" if wd_idx is not None else str(anime.get("weekday", "—"))
     content = _ANIME_PAGE_TMPL.format(
-        front_matter=_front_matter_tags(anime),
+        front_matter=_front_matter(anime, nav_title=anime.get("title_ru") or anime["title"]),
         title=anime["title"],
         title_ru=anime.get("title_ru", ""),
         title_jp=anime.get("title_jp", ""),

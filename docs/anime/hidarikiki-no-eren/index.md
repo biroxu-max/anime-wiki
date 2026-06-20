@@ -3,6 +3,7 @@ tags:
   - спорт
   - драма
   - повседневность
+title: "Левша Эрен"
 ---
 
 # Hidarikiki no Eren

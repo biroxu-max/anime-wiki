@@ -16,6 +16,7 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.indexes
+    - navigation.collapse
     - navigation.top
     - navigation.footer
     - search.suggest

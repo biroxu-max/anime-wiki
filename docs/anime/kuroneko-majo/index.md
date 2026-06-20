@@ -3,6 +3,7 @@ tags:
   - фэнтези
   - романтика
   - школа
+title: "Чёрная кошка и класс ведьм"
 ---
 
 # Kuroneko to Majo no Kyoushitsu

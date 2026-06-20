@@ -3,6 +3,7 @@ tags:
   - комедия
   - романтика
   - школа
+title: "Бесполезный дежурный и школьница со слишком короткой юбкой"
 ---
 
 # Ponkotsu Fuuki Iin to Skirt-take ga Futekisetsu na JK no Hanashi

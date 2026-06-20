@@ -3,6 +3,7 @@ tags:
   - комедия
   - фэнтези
   - романтика
+title: "Рыба, которую я упустила, большая, но я поймала другую, которая ещё больше"
 ---
 
 # Nigashita Sakana wa Ookikatta ga, Tsuriageta Sakana ga Ookisugita Ken
