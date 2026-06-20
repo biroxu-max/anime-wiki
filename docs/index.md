@@ -34,9 +34,9 @@ Gemini с веб-поиском и публикует их сюда.
 <!-- AUTO-RECENT -->
 - 🆕 **Yomi no Tsugai** — [Серия 12](anime/yomi-no-tsugai/ep-12.md)
 - 🆕 **Akane-banashi** — [Серия 12](anime/akane-banashi/ep-12.md)
+- 🆕 **Kill Ao** — [Серия 11](anime/kill-ao/ep-11.md)
 - 🆕 **Mao** — [Серия 12](anime/mao/ep-12.md)
 - 🆕 **Snowball Earth** — [Серия 12](anime/snowball-earth/ep-12.md)
-- 🆕 **Himekishi wa Barbaroi no Yome** — [Серия 11](anime/himekishi/ep-11.md)
 <!-- /AUTO-RECENT -->
 
 ---
