@@ -261,8 +261,49 @@ def _result_mentions_title(text: str, anime: dict) -> bool:
     return False
 
 
+import hashlib
+import json
+
+_CACHE_DIR = ROOT / ".tavily_cache"
+_CACHE_TTL_HOURS = 24  # результаты поиска живут 24 часа; после — берутся заново
+
+
+def _cache_key(query: str, domains: list[str], start_date: str) -> str:
+    """Стабильный хэш-ключ для кеширования запроса Tavily."""
+    raw = f"{query}|{','.join(domains)}|{start_date}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _cache_get(key: str) -> list[dict] | None:
+    """Возвращает кешированные результаты или None, если кеш устарел/отсутствует."""
+    p = _CACHE_DIR / f"{key}.json"
+    if not p.exists():
+        return None
+    age_h = (time.time() - p.stat().st_mtime) / 3600
+    if age_h > _CACHE_TTL_HOURS:
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _cache_put(key: str, results: list[dict]) -> None:
+    """Сохраняет результаты в кеш."""
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    p = _CACHE_DIR / f"{key}.json"
+    p.write_text(json.dumps(results, ensure_ascii=False), encoding="utf-8")
+
+
 def _do_one_search(client, query: str, episode: int, air_date: dt.date, domains: list[str], anime: dict) -> list[dict]:
-    """Один запрос к Tavily с постфильтром: эпизод-специфичность + название аниме."""
+    """Один запрос к Tavily с постфильтром + кеширование на 24 часа."""
+    # Кеш: пропускаем запрос, если свежие результаты уже есть
+    ckey = _cache_key(query, domains, air_date.isoformat())
+    cached = _cache_get(ckey)
+    if cached is not None:
+        print(f"  💾 кеш ({len(cached)} рез.) — без запроса к Tavily")
+        return cached
+
     try:
         response = client.search(
             query=query,
@@ -281,6 +322,8 @@ def _do_one_search(client, query: str, episode: int, air_date: dt.date, domains:
         if _episode_matches(haystack, episode):
             r["_spec"] = True
         out.append(r)
+
+    _cache_put(ckey, out)  # сохраняем в кеш
     return out
 
 
@@ -756,8 +799,15 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="без API (шаблонные страницы)")
     ap.add_argument("--commit", action="store_true", help="закоммитить и запушить (для CI)")
     ap.add_argument("--force", action="store_true", help="перегенерировать даже существующие страницы")
+    ap.add_argument("--no-cache", action="store_true", help="игнорировать кеш Tavily (всегда свежий поиск)")
     ap.add_argument("--update-only", action="store_true", help="только агрегирующие страницы")
     args = ap.parse_args()
+
+    # Очищаем кеш при --no-cache
+    if args.no_cache and _CACHE_DIR.exists():
+        import shutil
+        shutil.rmtree(_CACHE_DIR)
+        print("🗑️  Кеш Tavily очищен (--no-cache).")
 
     sched = load_schedule()
     model = sched.get("llm_model", "glm-4.6")

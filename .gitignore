@@ -8,6 +8,9 @@ venv/
 # MkDocs
 site/
 
+# Tavily cache (временные результаты поиска, TTL 24ч)
+.tavily_cache/
+
 # OS / редакторы
 .DS_Store
 Thumbs.db
