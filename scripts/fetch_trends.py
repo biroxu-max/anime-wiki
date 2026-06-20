@@ -136,7 +136,7 @@ PROMPT_TEMPLATE = """\
 Сезон: {season}. Номер серии: {episode}. Дата выхода серии: {air_date}.
 
 Ниже — свежие обсуждения из интернета, появившиеся после выхода этой серии.
-Источники могут быть на английском, японском (5ch) или корейском (Naver) —
+Источники могут быть на английском или японском (5ch) —
 обобщай их на русском, учитывая нюансы разных фандомов:
 
 {context}
@@ -197,7 +197,7 @@ def _episode_matches(text: str, episode: int) -> bool:
 
 # Домены с реальными обсуждениями, сгруппированные по языку/региону.
 _EN_FORUM_DOMAINS = ["reddit.com", "myanimelist.net", "anilist.co", "youtube.com"]
-_FOREIGN_DOMAINS = ["5ch.net", "cafe.naver.com", "blog.naver.com"]
+_FOREIGN_DOMAINS = ["5ch.net"]
 
 
 def _is_foreign(url: str) -> bool:
@@ -257,12 +257,11 @@ def _do_one_search(client, query: str, episode: int, air_date: dt.date, domains:
 
 
 def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, list[dict]]:
-    """Мультпоиск обсуждений КОНКРЕТНОЙ серии: англоязычные форумы + японский 5ch + корейский Naver.
+    """Мультпоиск обсуждений КОНКРЕТНОЙ серии: англоязычные форумы + японский 5ch.
 
     Каждый регион ищется отдельным запросом на релевантном языке (это критично —
-    английский запрос не находит JP/KR-треды). Результаты постфильтруются по номеру
-    серии и названию аниме, затем диверсифицируются по регионам для «золотых» JP/KR
-    источников.
+    английский запрос не находит JP-треды). Результаты постфильтруются по номеру
+    серии и названию аниме, затем диверсифицируются для «золотых» JP источников.
     """
     try:
         from tavily import TavilyClient
@@ -288,17 +287,11 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
         jp_query = f"{title_jp} {episode}話"  # «第12話»-стиль
         jp_results = _do_one_search(client, jp_query, episode, air_date, ["5ch.net"], anime)
 
-    # 3) Корейский Naver — корейские фаны знают англ./яп. названия
-    kr_query_parts = [anime["title"]] + ([title_jp] if title_jp else [])
-    kr_query = f"{' '.join(kr_query_parts)} {episode}화 리뷰"
-    kr_results = _do_one_search(client, kr_query, episode, air_date, ["cafe.naver.com", "blog.naver.com"], anime)
-
-    # Диверсификация: до 3 EN (приоритет эпизод-специфичным) + до 2 JP/KR («золото»)
+    # Диверсификация: до 3 EN (приоритет эпизод-специфичным) + до 2 JP 5ch («золото»)
     en_spec = [r for r in en_results if r.get("_spec")]
     en_gen = [r for r in en_results if not r.get("_spec")]
     picked = (en_spec + en_gen)[:3]
-    foreign = jp_results + kr_results
-    picked += foreign[:2]
+    picked += jp_results[:2]
     # добиваем до 6
     seen = {r.get("url") for r in picked}
     for r in en_gen + en_spec:
@@ -318,7 +311,7 @@ def _tavily_search(anime: dict, episode: int, air_date: dt.date) -> tuple[str, l
         title = r.get("title", "")
         url = r.get("url", "")
         content = r.get("content", "")[:800]
-        region = "🇯🇵" if "5ch.net" in url else ("🇰🇷" if "naver.com" in url else "")
+        region = "🇯🇵" if "5ch.net" in url else ""
         prefix = f"{region} " if region else ""
         context_parts.append(f"{prefix}[{i+1}] {title}\n{url}\n{content}")
         if url:
